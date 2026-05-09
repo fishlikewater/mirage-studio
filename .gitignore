@@ -28,6 +28,5 @@ ComfyUI_frontend/
 Henji-AI/
 .worktrees/
 docs/superpowers
-.claude
-.agents
-.codex
+.superpowers/
+src-tauri/target-codex-tests*/

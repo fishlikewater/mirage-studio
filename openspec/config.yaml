@@ -1,0 +1,35 @@
+schema: spec-driven
+
+context: |
+  Project: StoryBoard-Copilot
+  Product goal: A node-canvas desktop app for image upload, AI generation/editing, tool processing, cropping/annotation, storyboard splitting, and project persistence.
+  Frontend: React, TypeScript, Zustand, @xyflow/react, TailwindCSS, i18next.
+  Backend: Tauri 2, Rust, rusqlite, SQLite WAL, command-style frontend/backend boundary.
+  Key modules:
+    - Canvas state and node registry: src/stores/canvasStore.ts, src/features/canvas/domain/**
+    - Canvas UI and node components: src/features/canvas/Canvas.tsx, src/features/canvas/nodes/**
+    - Tools: src/features/canvas/tools/**, src/features/canvas/application/toolProcessor.ts
+    - Models/providers: src/features/canvas/models/**, src-tauri/src/ai/providers/**
+    - Persistence commands: src/commands/**, src-tauri/src/commands/**
+  Conventions:
+    - UI must use i18n keys from src/i18n/locales/zh.json and en.json.
+    - Node type/menu/connectivity single source of truth is src/features/canvas/domain/nodeRegistry.ts.
+    - Store should not own heavy business logic; use application/domain layers.
+    - Project persistence uses debounced full snapshots and lightweight viewport updates.
+    - SQLite schema changes must self-heal in ensure_projects_table.
+  Verification:
+    - Frontend type check: npx tsc --noEmit
+    - Frontend tests: npm test
+    - Frontend build: npm run build
+    - Rust check when src-tauri changes: cd src-tauri && cargo check
+
+rules:
+  proposal:
+    - 明确用户可见行为变化、非目标和影响范围。
+    - 涉及节点、工具、模型、持久化或 i18n 时，列出同步更新点。
+  design:
+    - L2 变更必须说明跨层数据流、错误传播、持久化影响和回滚/兼容策略。
+    - 涉及 SQLite schema 时必须说明 ensure_projects_table 自愈策略。
+  tasks:
+    - 拆成可验证步骤，每步都要有对应验证方式。
+    - 不维护与 docs/superpowers/plans 重复的细粒度任务状态。

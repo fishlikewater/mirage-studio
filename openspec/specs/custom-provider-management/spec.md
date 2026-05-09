@@ -1,11 +1,11 @@
 # custom-provider-management Specification
 
 ## Purpose
-TBD - created by archiving change separate-provider-management-page. Update Purpose after archive.
+定义自定义供应商独立管理页面、新增/编辑/删除弹窗、协议字段校验，以及已保存供应商继续参与生图选择的行为。
 
 ## Requirements
-### Requirement: 设置页必须提供独立的供应商管理入口
-系统必须在设置页左侧提供独立菜单项“供应商”，并将其用于管理自定义供应商。该入口必须与内置供应商 API Key 配置入口分离，避免两者混用同一页面。
+### Requirement: 系统 MUST 在设置页提供独立的供应商管理入口
+系统 MUST 在设置页左侧提供独立菜单项“供应商”，并将其用于管理自定义供应商。该入口 MUST 与内置供应商 API Key 配置入口分离，避免两者混用同一页面。
 
 #### Scenario: 用户打开设置页
 - **WHEN** 用户打开设置页并查看左侧菜单
@@ -16,8 +16,8 @@ TBD - created by archiving change separate-provider-management-page. Update Purp
 - **WHEN** 用户在生图流程中遇到某个自定义供应商缺少必要配置
 - **THEN** 系统必须能够将用户引导到“供应商”页面，而不是停留在内置 API Key 页面
 
-### Requirement: 供应商页面必须显示添加按钮和供应商列表
-系统必须在供应商页面顶部显示“添加供应商”按钮，并在其下方展示已保存的自定义供应商列表。每条列表项必须展示供应商名称、可用模型名称摘要，以及“编辑”“删除”操作入口。
+### Requirement: 系统 MUST 在供应商页面显示添加按钮和供应商列表
+系统 MUST 在供应商页面顶部显示“添加供应商”按钮，并在其下方展示已保存的自定义供应商列表。每条列表项 MUST 展示供应商名称、可用模型名称摘要，以及“编辑”“删除”操作入口。
 
 #### Scenario: 页面存在已保存供应商
 - **WHEN** 用户进入供应商页面且系统中已存在一个或多个自定义供应商
@@ -32,8 +32,8 @@ TBD - created by archiving change separate-provider-management-page. Update Purp
 - **THEN** 系统必须显示空状态提示
 - **THEN** 顶部“添加供应商”按钮仍必须可见并可点击
 
-### Requirement: 系统必须支持通过弹窗新增供应商
-系统必须在用户点击“添加供应商”后弹出新增供应商窗口。该窗口必须允许用户填写当前自定义供应商所需属性，并在点击底部“保存”按钮后保存该供应商配置。窗口中的连接字段必须根据所选“接入协议”动态切换。
+### Requirement: 系统 MUST 支持通过弹窗新增供应商
+系统 MUST 在用户点击“添加供应商”后弹出新增供应商窗口。该窗口 MUST 允许用户填写当前自定义供应商所需属性，并在点击底部“保存”按钮后保存该供应商配置。窗口中的连接字段 MUST 根据所选“接入协议”动态切换。
 
 #### Scenario: 用户打开新增供应商窗口
 - **WHEN** 用户点击供应商页面顶部的“添加供应商”按钮
@@ -58,8 +58,8 @@ TBD - created by archiving change separate-provider-management-page. Update Purp
 - **THEN** 新供应商必须立即出现在供应商列表中
 - **THEN** 系统不得要求用户再点击设置页底部保存按钮
 
-### Requirement: 系统必须支持通过弹窗编辑供应商
-系统必须允许用户通过列表中的“编辑”按钮打开编辑窗口，并使用与新增窗口一致的表单结构编辑已存在的供应商。编辑弹窗必须维持固定尺寸壳体，并让模型列表在弹窗内部滚动，而不是撑开整个窗口。
+### Requirement: 系统 MUST 支持通过弹窗编辑供应商
+系统 MUST 允许用户通过列表中的“编辑”按钮打开编辑窗口，并使用与新增窗口一致的表单结构编辑已存在的供应商。编辑弹窗 MUST 维持固定尺寸壳体，并让模型列表在弹窗内部滚动，而不是撑开整个窗口。
 
 #### Scenario: 用户打开编辑窗口
 - **WHEN** 用户点击某个供应商列表项上的“编辑”按钮
@@ -84,8 +84,8 @@ TBD - created by archiving change separate-provider-management-page. Update Purp
 - **THEN** 供应商列表中对应行的名称和模型摘要必须同步更新
 - **THEN** 系统不得要求用户再点击设置页底部保存按钮
 
-### Requirement: 供应商编辑器必须按接入协议校验连接字段
-系统必须根据当前供应商选择的接入协议执行不同的连接字段校验，并阻止用户保存缺少必填连接字段的供应商。
+### Requirement: 系统 MUST 按接入协议校验供应商连接字段
+系统 MUST 根据当前供应商选择的接入协议执行不同的连接字段校验，并阻止用户保存缺少必填连接字段的供应商。
 
 #### Scenario: openapi 供应商缺少必填连接字段
 - **WHEN** 用户选择 `openapi` 协议且缺少 `baseUrl` 或 `apiKey` 后点击保存
@@ -97,8 +97,8 @@ TBD - created by archiving change separate-provider-management-page. Update Purp
 - **THEN** 系统必须拒绝保存
 - **AND** 系统必须保留当前弹窗内容供用户修正
 
-### Requirement: 系统必须在删除供应商前进行二次确认
-系统必须允许用户通过供应商列表中的“删除”按钮发起删除流程，但在真正删除前必须弹出二次确认窗口。只有在用户明确确认后，系统才能移除该供应商。
+### Requirement: 系统 MUST 在删除供应商前进行二次确认
+系统 MUST 允许用户通过供应商列表中的“删除”按钮发起删除流程，但在真正删除前 MUST 弹出二次确认窗口。只有在用户明确确认后，系统才能移除该供应商。
 
 #### Scenario: 用户取消删除供应商
 - **WHEN** 用户点击某个供应商列表项上的“删除”按钮后，在确认窗口中选择“取消”
@@ -112,8 +112,8 @@ TBD - created by archiving change separate-provider-management-page. Update Purp
 - **THEN** 供应商列表必须立即反映删除结果
 - **THEN** 系统不得要求用户再点击设置页底部保存按钮
 
-### Requirement: 已保存的自定义供应商必须继续参与生图选择
-系统必须保证在供应商页面中新增或编辑成功的自定义供应商继续参与生图时的供应商与模型选择，不得因为页面重构而改变现有运行时选择逻辑。
+### Requirement: 系统 MUST 让已保存的自定义供应商继续参与生图选择
+系统 MUST 保证在供应商页面中新增或编辑成功的自定义供应商继续参与生图时的供应商与模型选择，MUST NOT 因为页面重构而改变现有运行时选择逻辑。
 
 #### Scenario: 新增供应商后进入生图选择
 - **WHEN** 用户保存一个包含启用模型的自定义供应商后进入生图节点的模型选择面板

@@ -1,0 +1,15 @@
+# Trellis 配置
+# 当前项目：StoryBoard-Copilot
+
+# add_session.py 自动提交 journal/index 元数据时使用的提交信息。
+session_commit_message: "chore: record trellis session"
+
+# 单个 journal 文件最大行数，超过后自动轮转。
+max_journal_lines: 2000
+
+# 任务生命周期钩子默认关闭，避免在桌面应用开发中引入隐式副作用。
+# 如需启用，命令必须是当前项目真实可执行命令。
+#
+# hooks:
+#   after_create:
+#     - "python3 ./.trellis/scripts/get_context.py"

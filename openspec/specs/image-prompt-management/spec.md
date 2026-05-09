@@ -1,7 +1,7 @@
 # image-prompt-management Specification
 
 ## Purpose
-TBD - created by archiving change add-image-prompt-management. Update Purpose after archive.
+定义图片提示词管理入口、模板库持久化、AI 图片节点快捷模板展示，以及点击模板后同步追加到节点提示词的行为。
 ## Requirements
 ### Requirement: Title bar provides direct access to prompt management
 The system SHALL place a dedicated prompt management button next to the settings button in the title bar. Clicking this button MUST open a dedicated prompt management dialog instead of routing through a settings category.
