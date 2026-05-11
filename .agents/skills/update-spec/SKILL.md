@@ -13,6 +13,7 @@ description: 将实现、调试或讨论中得到的新约束沉淀到 .trellis/
 - 修复了一个非显而易见的 bug。
 - 发现现有规范不足以指导后续实现。
 - 行为变更导致前端、Rust、SQLite、i18n 或 OpenSpec 需要同步说明。
+- 发现 `docs/superpowers/plans/*.md` 的状态回写规则不足，导致计划、OpenSpec 或 Trellis 状态不一致。
 
 ## 放在哪里
 
@@ -21,6 +22,7 @@ description: 将实现、调试或讨论中得到的新约束沉淀到 .trellis/
 | React 组件、Hook、状态、类型、i18n | `.trellis/spec/frontend/` |
 | Tauri 命令、Rust provider、SQLite、错误、日志 | `.trellis/spec/backend/` |
 | 编码前提醒、跨层思考、复用判断 | `.trellis/spec/guides/` |
+| OpenSpec、Trellis、superpowers 计划状态同步 | `.trellis/spec/guides/spec-collaboration.md` |
 
 ## 必须写清楚
 

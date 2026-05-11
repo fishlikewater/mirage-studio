@@ -75,10 +75,11 @@ openspec validate --strict --type change <slug>
 ```
 
 3. 使用 `superpowers:brainstorming` 对齐方案，使用 `superpowers:writing-plans` 产出实现计划。
-4. 将高层里程碑同步到 `openspec/changes/<slug>/tasks.md`。
-5. 创建或绑定 Trellis 任务，把 proposal/spec/design/plan 加入任务上下文。
-6. 执行实现、验证、review。
-7. 完成后归档 OpenSpec change，并记录 session。
+4. 检查 `docs/superpowers/plans/YYYY-MM-DD-<slug>.md` 是否包含可回写 checkbox 和“当前执行状态”区块。
+5. 将高层里程碑同步到 `openspec/changes/<slug>/tasks.md`。
+6. 创建或绑定 Trellis 任务，把 proposal/spec/design/plan 加入任务上下文。
+7. 执行实现、验证、review；每个步骤完成且验证通过后，及时更新计划 checkbox 和当前执行状态。
+8. 完成后归档 OpenSpec change，并记录 session。
 
 如果本机没有 OpenSpec CLI，不要假装校验已完成；应说明阻塞，并用文档审阅替代到 CLI 可用为止。
 
@@ -153,6 +154,7 @@ python3 ./.trellis/scripts/add_session.py --title "Session Title" --commit "abc1
 
 - 验证命令已按范围执行，未执行的命令已说明原因。
 - 行为变更对应的 OpenSpec、计划、任务状态已同步。
+- `docs/superpowers/plans/*.md` 中的 checkbox、当前执行状态、验证/review 结论与真实进度一致。
 - `.trellis/spec/` 中需要沉淀的新规则已更新。
 - 工作区中无误删、无与本次任务无关的回退。
 

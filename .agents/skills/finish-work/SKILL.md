@@ -54,6 +54,8 @@ cd src-tauri && cargo check
 
 - 行为变更是否已更新 OpenSpec？
 - 新约束是否已沉淀到 `.trellis/spec/`？
+- 关联的 `docs/superpowers/plans/*.md` 是否已同步 checkbox、当前执行状态、验证和 review 结论？
+- 未完成、未验证或被阻塞的计划步骤是否保持未勾选，并写明原因？
 - Trellis 任务状态、上下文和 session 是否需要更新？
 - 发布相关改动是否已准备 `docs/releases/vx.y.z.md`？
 

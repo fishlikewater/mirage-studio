@@ -42,10 +42,12 @@ python3 ./.trellis/scripts/add_session.py \
 - 本次目标
 - 主要变更
 - 验证命令与结果
+- 关联计划文档的最新 checkbox 和当前执行状态
 - 未完成风险或后续动作
 
 ## 4. 结束检查
 
 - `.trellis/workspace` 已更新。
 - `.trellis/tasks` 状态与真实任务一致。
+- `docs/superpowers/plans/*.md` 状态与真实进度一致，不把未验证步骤误勾选。
 - 没有把业务代码和 session 元数据混淆成同一个“已验证”结论。

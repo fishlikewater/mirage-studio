@@ -72,6 +72,7 @@
 - `L1`：单模块或单能力的用户可见行为变化，先补 OpenSpec proposal/spec，再写实现计划。
 - `L2`：跨模块、跨层、接口契约、持久化结构、模型供应商协议或架构边界变化，必须补 OpenSpec proposal/spec/design，并在实现后完成更严格 review。
 - 方案讨论使用 `superpowers:brainstorming`，开发计划必须显式使用 `superpowers:writing-plans`。
+- `docs/superpowers/plans/*.md` 是执行期活文档；进入执行后必须持续回写 checkbox、当前执行状态、验证与 review 结论。
 - Trellis 负责执行过程、上下文同步、journal 留痕与多 Agent 协作。
 
 ## 6. 项目规范入口

@@ -28,6 +28,7 @@ git status
 ```
 
 检查是否已有当前任务、未提交改动、OpenSpec change 或正在进行的 session。
+如果存在关联的 `docs/superpowers/plans/*.md`，同时检查计划中的 checkbox 和“当前执行状态”是否反映真实进度。
 
 ## 3. 判断任务级别
 
@@ -61,5 +62,6 @@ python3 ./.trellis/scripts/task.py start <task-dir>
 
 - 先读规范，再动手。
 - 行为变更先规格、再计划、再实现。
+- 执行计划时把 `docs/superpowers/plans/*.md` 当作活文档，完成且验证通过后及时回写状态。
 - 不要覆盖用户已有改动；遇到冲突先停下来说明。
 - 修改 `SKILL.md` 时保持语言一致，并避免写成一次性任务清单。
