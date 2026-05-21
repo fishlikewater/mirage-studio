@@ -358,7 +358,7 @@ export const UploadNode = memo(({ id, data, selected, width, height }: UploadNod
         type="source"
         id="source"
         position={Position.Right}
-        className="!h-2 !w-2 !border-surface-dark !bg-accent"
+        className="canvas-connection-handle !border-surface-dark !bg-accent"
       />
       <NodeResizeHandle
         minWidth={resizeMinWidth}

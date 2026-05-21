@@ -186,8 +186,15 @@ html[data-platform='macos'] #root {
 }
 
 .react-flow__handle {
-  width: 8px;
-  height: 8px;
+  width: 14px;
+  height: 14px;
+}
+
+.canvas-connection-handle {
+  min-width: 14px !important;
+  min-height: 14px !important;
+  width: 14px !important;
+  height: 14px !important;
 }
 
 .ui-panel {

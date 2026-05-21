@@ -49,6 +49,7 @@ import {
 import { resolveGenerationContext } from '@/features/canvas/application/runtimeGenerationContext';
 import { buildNodeGeneratePayload } from '@/features/canvas/application/buildNodeGeneratePayload';
 import { appendPromptTemplateContent } from '@/features/canvas/application/promptTemplateText';
+import type { GenerateImageAction } from '@/features/canvas/application/ports';
 import {
   DEFAULT_IMAGE_MODEL_ID,
   getRuntimeImageModel,
@@ -231,10 +232,12 @@ export const ImageEditNode = memo(({ id, data, selected, width, height }: ImageE
   const { t, i18n } = useTranslation();
   const updateNodeInternals = useUpdateNodeInternals();
   const [error, setError] = useState<string | null>(null);
+  const [isSubmittingGeneration, setIsSubmittingGeneration] = useState(false);
 
   const rootRef = useRef<HTMLDivElement>(null);
   const promptRef = useRef<HTMLTextAreaElement>(null);
   const promptHighlightRef = useRef<HTMLDivElement>(null);
+  const isSubmittingGenerationRef = useRef(false);
   const [promptDraft, setPromptDraft] = useState(() => data.prompt ?? '');
   const promptDraftRef = useRef(promptDraft);
   const [showImagePicker, setShowImagePicker] = useState(false);
@@ -295,6 +298,8 @@ export const ImageEditNode = memo(({ id, data, selected, width, height }: ImageE
     () => resolveGenerationContext(selectedModel, apiKeys),
     [apiKeys, selectedModel]
   );
+  const isOpenAiImageProtocol = generationContext.providerRuntime?.protocol === 'openai-image';
+  const canEditWithOpenAiImage = incomingImages.length > 0 && generationContext.isConfigured;
   const effectiveExtraParams = useMemo(
     () => ({
       ...(data.extraParams ?? {}),
@@ -471,7 +476,15 @@ export const ImageEditNode = memo(({ id, data, selected, width, height }: ImageE
     };
   }, []);
 
-  const handleGenerate = useCallback(async () => {
+  const handleGenerate = useCallback(async (action: GenerateImageAction = 'generate') => {
+    if (isSubmittingGenerationRef.current) {
+      return;
+    }
+
+    if (action === 'edit' && incomingImages.length === 0) {
+      return;
+    }
+
     const prompt = promptDraft.replace(/@(?=图\d+)/g, '').trim();
     if (!prompt) {
       const errorMessage = t('node.imageEdit.promptRequired');
@@ -487,127 +500,135 @@ export const ImageEditNode = memo(({ id, data, selected, width, height }: ImageE
       return;
     }
 
-    const generationDurationMs = selectedModel.expectedDurationMs ?? 60000;
-    const generationStartedAt = Date.now();
-    const resultNodeTitle = buildAiResultNodeTitle(prompt, t('node.imageEdit.resultTitle'));
-    const runtimeDiagnostics = await getRuntimeDiagnostics();
-    setError(null);
-
-    const newNodePosition = findNodePosition(
-      id,
-      EXPORT_RESULT_NODE_DEFAULT_WIDTH,
-      EXPORT_RESULT_NODE_LAYOUT_HEIGHT
-    );
-    const newNodeId = addNode(
-      CANVAS_NODE_TYPES.exportImage,
-      newNodePosition,
-      {
-        isGenerating: true,
-        generationStartedAt,
-        generationDurationMs,
-        resultKind: 'generic',
-        displayName: resultNodeTitle,
-      }
-    );
-    addEdge(id, newNodeId);
-
+    isSubmittingGenerationRef.current = true;
+    setIsSubmittingGeneration(true);
     try {
-      if (generationContext.shouldSetApiKey) {
-        await canvasAiGateway.setApiKey(selectedModel.providerId, generationContext.apiKey);
-      }
+      const generationDurationMs = selectedModel.expectedDurationMs ?? 60000;
+      const generationStartedAt = Date.now();
+      const resultNodeTitle = buildAiResultNodeTitle(prompt, t('node.imageEdit.resultTitle'));
+      const runtimeDiagnostics = await getRuntimeDiagnostics();
+      setError(null);
 
-      let resolvedRequestAspectRatio = selectedAspectRatio.value;
-      if (resolvedRequestAspectRatio === AUTO_REQUEST_ASPECT_RATIO) {
-        if (incomingImages.length > 0) {
-          try {
-            const sourceAspectRatio = await detectAspectRatio(incomingImages[0]);
-            const sourceAspectRatioValue = parseAspectRatio(sourceAspectRatio);
-            resolvedRequestAspectRatio = pickClosestAspectRatio(
-              sourceAspectRatioValue,
-              supportedAspectRatioValues
-            );
-          } catch {
+      const newNodePosition = findNodePosition(
+        id,
+        EXPORT_RESULT_NODE_DEFAULT_WIDTH,
+        EXPORT_RESULT_NODE_LAYOUT_HEIGHT
+      );
+      const newNodeId = addNode(
+        CANVAS_NODE_TYPES.exportImage,
+        newNodePosition,
+        {
+          isGenerating: true,
+          generationStartedAt,
+          generationDurationMs,
+          resultKind: 'generic',
+          displayName: resultNodeTitle,
+        }
+      );
+      addEdge(id, newNodeId);
+
+      try {
+        if (generationContext.shouldSetApiKey) {
+          await canvasAiGateway.setApiKey(selectedModel.providerId, generationContext.apiKey);
+        }
+
+        let resolvedRequestAspectRatio = selectedAspectRatio.value;
+        if (resolvedRequestAspectRatio === AUTO_REQUEST_ASPECT_RATIO) {
+          if (incomingImages.length > 0) {
+            try {
+              const sourceAspectRatio = await detectAspectRatio(incomingImages[0]);
+              const sourceAspectRatioValue = parseAspectRatio(sourceAspectRatio);
+              resolvedRequestAspectRatio = pickClosestAspectRatio(
+                sourceAspectRatioValue,
+                supportedAspectRatioValues
+              );
+            } catch {
+              resolvedRequestAspectRatio = pickClosestAspectRatio(1, supportedAspectRatioValues);
+            }
+          } else {
             resolvedRequestAspectRatio = pickClosestAspectRatio(1, supportedAspectRatioValues);
           }
-        } else {
-          resolvedRequestAspectRatio = pickClosestAspectRatio(1, supportedAspectRatioValues);
         }
-      }
 
-      const jobId = await canvasAiGateway.submitGenerateImageJob(
-        buildNodeGeneratePayload({
-          prompt,
+        const jobId = await canvasAiGateway.submitGenerateImageJob(
+          buildNodeGeneratePayload({
+            prompt,
+            requestModel: requestResolution.requestModel,
+            size: selectedResolution.value,
+            aspectRatio: resolvedRequestAspectRatio,
+            action: action === 'edit' ? action : undefined,
+            referenceImages: incomingImages,
+            extraParams: effectiveExtraParams,
+            providerRuntime: generationContext.providerRuntime,
+          })
+        );
+        const generationDebugContext: GenerationDebugContext = {
+          sourceType: 'imageEdit',
+          providerId: selectedModel.providerId,
           requestModel: requestResolution.requestModel,
-          size: selectedResolution.value,
-          aspectRatio: resolvedRequestAspectRatio,
-          referenceImages: incomingImages,
+          requestSize: selectedResolution.value,
+          requestAspectRatio: resolvedRequestAspectRatio,
+          prompt,
           extraParams: effectiveExtraParams,
-          providerRuntime: generationContext.providerRuntime,
-        })
-      );
-      const generationDebugContext: GenerationDebugContext = {
-        sourceType: 'imageEdit',
-        providerId: selectedModel.providerId,
-        requestModel: requestResolution.requestModel,
-        requestSize: selectedResolution.value,
-        requestAspectRatio: resolvedRequestAspectRatio,
-        prompt,
-        extraParams: effectiveExtraParams,
-        referenceImageCount: incomingImages.length,
-        referenceImagePlaceholders: createReferenceImagePlaceholders(incomingImages.length),
-        appVersion: runtimeDiagnostics.appVersion,
-        osName: runtimeDiagnostics.osName,
-        osVersion: runtimeDiagnostics.osVersion,
-        osBuild: runtimeDiagnostics.osBuild,
-        userAgent: runtimeDiagnostics.userAgent,
-      };
-      updateNodeData(newNodeId, {
-        generationJobId: jobId,
-        generationSourceType: 'imageEdit',
-        generationProviderId: generationContext.resumeProviderId,
-        generationClientSessionId: CURRENT_RUNTIME_SESSION_ID,
-        generationDebugContext,
-      });
-    } catch (generationError) {
-      const resolvedError = resolveErrorContent(generationError, t('ai.error'));
-      const generationDebugContext: GenerationDebugContext = {
-        sourceType: 'imageEdit',
-        providerId: selectedModel.providerId,
-        requestModel: requestResolution.requestModel,
-        requestSize: selectedResolution.value,
-        requestAspectRatio: selectedAspectRatio.value,
-        prompt,
-        extraParams: effectiveExtraParams,
-        referenceImageCount: incomingImages.length,
-        referenceImagePlaceholders: createReferenceImagePlaceholders(incomingImages.length),
-        appVersion: runtimeDiagnostics.appVersion,
-        osName: runtimeDiagnostics.osName,
-        osVersion: runtimeDiagnostics.osVersion,
-        osBuild: runtimeDiagnostics.osBuild,
-        userAgent: runtimeDiagnostics.userAgent,
-      };
-      const reportText = buildGenerationErrorReport({
-        errorMessage: resolvedError.message,
-        errorDetails: resolvedError.details,
-        context: generationDebugContext,
-      });
-      setError(resolvedError.message);
-      void showErrorDialog(
-        resolvedError.message,
-        t('common.error'),
-        resolvedError.details,
-        reportText
-      );
-      updateNodeData(newNodeId, {
-        isGenerating: false,
-        generationStartedAt: null,
-        generationJobId: null,
-        generationProviderId: null,
-        generationClientSessionId: null,
-        generationError: resolvedError.message,
-        generationErrorDetails: resolvedError.details ?? null,
-        generationDebugContext,
-      });
+          referenceImageCount: incomingImages.length,
+          referenceImagePlaceholders: createReferenceImagePlaceholders(incomingImages.length),
+          appVersion: runtimeDiagnostics.appVersion,
+          osName: runtimeDiagnostics.osName,
+          osVersion: runtimeDiagnostics.osVersion,
+          osBuild: runtimeDiagnostics.osBuild,
+          userAgent: runtimeDiagnostics.userAgent,
+        };
+        updateNodeData(newNodeId, {
+          generationJobId: jobId,
+          generationSourceType: 'imageEdit',
+          generationProviderId: generationContext.resumeProviderId,
+          generationClientSessionId: CURRENT_RUNTIME_SESSION_ID,
+          generationDebugContext,
+        });
+      } catch (generationError) {
+        const resolvedError = resolveErrorContent(generationError, t('ai.error'));
+        const generationDebugContext: GenerationDebugContext = {
+          sourceType: 'imageEdit',
+          providerId: selectedModel.providerId,
+          requestModel: requestResolution.requestModel,
+          requestSize: selectedResolution.value,
+          requestAspectRatio: selectedAspectRatio.value,
+          prompt,
+          extraParams: effectiveExtraParams,
+          referenceImageCount: incomingImages.length,
+          referenceImagePlaceholders: createReferenceImagePlaceholders(incomingImages.length),
+          appVersion: runtimeDiagnostics.appVersion,
+          osName: runtimeDiagnostics.osName,
+          osVersion: runtimeDiagnostics.osVersion,
+          osBuild: runtimeDiagnostics.osBuild,
+          userAgent: runtimeDiagnostics.userAgent,
+        };
+        const reportText = buildGenerationErrorReport({
+          errorMessage: resolvedError.message,
+          errorDetails: resolvedError.details,
+          context: generationDebugContext,
+        });
+        setError(resolvedError.message);
+        void showErrorDialog(
+          resolvedError.message,
+          t('common.error'),
+          resolvedError.details,
+          reportText
+        );
+        updateNodeData(newNodeId, {
+          isGenerating: false,
+          generationStartedAt: null,
+          generationJobId: null,
+          generationProviderId: null,
+          generationClientSessionId: null,
+          generationError: resolvedError.message,
+          generationErrorDetails: resolvedError.details ?? null,
+          generationDebugContext,
+        });
+      }
+    } finally {
+      isSubmittingGenerationRef.current = false;
+      setIsSubmittingGeneration(false);
     }
   }, [
     addNode,
@@ -919,16 +940,32 @@ export const ImageEditNode = memo(({ id, data, selected, width, height }: ImageE
 
         <div className="ml-auto" />
 
+        {isOpenAiImageProtocol && (
+          <UiButton
+            onClick={(event) => {
+              event.stopPropagation();
+              void handleGenerate('edit');
+            }}
+            disabled={!canEditWithOpenAiImage || isSubmittingGeneration}
+            variant="muted"
+            className={`shrink-0 ${NODE_CONTROL_PRIMARY_BUTTON_CLASS}`}
+          >
+            <Sparkles className={NODE_CONTROL_ICON_CLASS} strokeWidth={2.8} />
+            {t('node.imageEdit.edit')}
+          </UiButton>
+        )}
+
         <UiButton
           onClick={(event) => {
             event.stopPropagation();
             void handleGenerate();
           }}
+          disabled={isSubmittingGeneration}
           variant="primary"
           className={`shrink-0 ${NODE_CONTROL_PRIMARY_BUTTON_CLASS}`}
         >
           <Sparkles className={NODE_CONTROL_ICON_CLASS} strokeWidth={2.8} />
-          {t('canvas.generate')}
+          {isSubmittingGeneration ? t('ai.generating') : t('canvas.generate')}
         </UiButton>
       </div>
 
@@ -938,13 +975,13 @@ export const ImageEditNode = memo(({ id, data, selected, width, height }: ImageE
         type="target"
         id="target"
         position={Position.Left}
-        className="!h-2 !w-2 !border-surface-dark !bg-accent"
+        className="canvas-connection-handle !border-surface-dark !bg-accent"
       />
       <Handle
         type="source"
         id="source"
         position={Position.Right}
-        className="!h-2 !w-2 !border-surface-dark !bg-accent"
+        className="canvas-connection-handle !border-surface-dark !bg-accent"
       />
       <NodeResizeHandle
         minWidth={IMAGE_EDIT_NODE_MIN_WIDTH}

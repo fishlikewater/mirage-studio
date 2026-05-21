@@ -1,0 +1,11 @@
+{"file": "AGENTS.md", "reason": "Project collaboration rules and workflow gates"}
+{"file": ".cowork-flow/workflow.md", "reason": "Project workflow and conventions"}
+{"file": ".cowork-flow/spec/guides/index.md", "reason": "Pre-implementation thinking guides"}
+{"file": ".cowork-flow/spec/guides/pre-implementation-checklist.md", "reason": "Mandatory pre-coding checklist"}
+{"file": ".cowork-flow/spec/frontend/index.md", "reason": "Frontend development guide"}
+{"file": ".cowork-flow/changes/canvas-interaction-feedback/proposal.md", "reason": "Approved behavior change proposal"}
+{"file": ".cowork-flow/changes/canvas-interaction-feedback/specs/canvas-interaction-feedback/spec.md", "reason": "Approved behavior spec"}
+{"file": ".cowork-flow/plans/2026-05-21-canvas-interaction-feedback.md", "reason": "Implementation plan"}
+{"file": "src/features/canvas/nodes/ImageEditNode.tsx", "reason": "Image generation button behavior"}
+{"file": "src/features/canvas/nodes/ImageEditNode.test.tsx", "reason": "Regression tests for image node interactions"}
+{"file": "src/index.css", "reason": "Shared React Flow handle sizing"}

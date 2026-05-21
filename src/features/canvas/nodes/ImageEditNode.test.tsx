@@ -4,6 +4,10 @@ import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { buildNodeGeneratePayload } from '@/features/canvas/application/buildNodeGeneratePayload';
+import { canvasAiGateway, graphImageResolver } from '@/features/canvas/application/canvasServices';
+import { getRuntimeDiagnostics } from '@/features/canvas/application/generationErrorReport';
+import { resolveGenerationContext } from '@/features/canvas/application/runtimeGenerationContext';
 import type { ImageEditNodeData } from '@/features/canvas/domain/canvasNodes';
 import { useCanvasStore } from '@/stores/canvasStore';
 import { DEFAULT_GRSAI_NANO_BANANA_PRO_MODEL, useSettingsStore } from '@/stores/settingsStore';
@@ -11,8 +15,8 @@ import { DEFAULT_GRSAI_NANO_BANANA_PRO_MODEL, useSettingsStore } from '@/stores/
 import { ImageEditNode } from './ImageEditNode';
 
 vi.mock('@xyflow/react', () => ({
-  Handle: ({ type, id }: { type: string; id?: string }) => (
-    <div data-testid={`handle-${type}-${id ?? 'default'}`} />
+  Handle: ({ type, id, className }: { type: string; id?: string; className?: string }) => (
+    <div data-testid={`handle-${type}-${id ?? 'default'}`} className={className} />
   ),
   Position: {
     Left: 'left',
@@ -102,13 +106,13 @@ vi.mock('@/features/canvas/application/referenceTokenEditing', () => ({
 }));
 
 vi.mock('@/features/canvas/application/runtimeGenerationContext', () => ({
-  resolveGenerationContext: () => ({
+  resolveGenerationContext: vi.fn(() => ({
     isConfigured: true,
     shouldSetApiKey: false,
     apiKey: '',
-    providerRuntime: null,
+    providerRuntime: undefined,
     resumeProviderId: 'mock-provider',
-  }),
+  })),
 }));
 
 vi.mock('@/features/canvas/application/buildNodeGeneratePayload', () => ({
@@ -142,6 +146,147 @@ vi.mock('@/features/canvas/models', () => {
       },
     ]),
   };
+});
+
+describe('ImageEditNode openai-image edit action', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+
+    act(() => {
+      useSettingsStore.setState(
+        {
+          ...initialSettingsState,
+          apiKeys: {},
+          customProviders: [],
+          promptTemplates: [],
+          grsaiNanoBananaProModel: DEFAULT_GRSAI_NANO_BANANA_PRO_MODEL,
+          showNodePrice: false,
+        },
+        true
+      );
+
+      useCanvasStore.setState(
+        {
+          ...initialCanvasState,
+          nodes: [],
+          edges: [],
+          selectedNodeId: null,
+          setSelectedNode: vi.fn(),
+          updateNodeData: vi.fn(),
+          addNode: vi.fn(() => 'generated-node'),
+          findNodePosition: vi.fn(() => ({ x: 0, y: 0 })),
+          addEdge: vi.fn(),
+        },
+        true
+      );
+    });
+
+    vi.mocked(graphImageResolver.collectInputImages).mockReturnValue([]);
+    vi.mocked(resolveGenerationContext).mockReturnValue({
+      isConfigured: true,
+      shouldSetApiKey: false,
+      apiKey: '',
+      providerRuntime: {
+        kind: 'custom-provider',
+        protocol: 'openai-image',
+        baseUrl: 'https://api.openai.com/v1',
+        apiKey: 'sk-openai',
+        remoteModelId: 'gpt-image-1',
+      },
+      resumeProviderId: 'openai-images',
+    });
+    vi.mocked(buildNodeGeneratePayload).mockReturnValue({
+      prompt: 'mock prompt',
+      model: 'mock-model',
+      size: '1K',
+      aspectRatio: '1:1',
+    });
+    vi.mocked(canvasAiGateway.submitGenerateImageJob).mockResolvedValue('job-1');
+    vi.mocked(getRuntimeDiagnostics).mockResolvedValue({
+      appVersion: '1.0.0',
+      osName: 'test',
+      osVersion: '1.0.0',
+      osBuild: 'build',
+      userAgent: 'vitest',
+    });
+  });
+
+  afterEach(() => {
+    cleanup();
+    act(() => {
+      useSettingsStore.setState(initialSettingsState, true);
+      useCanvasStore.setState(initialCanvasState, true);
+    });
+  });
+
+  it('disables the edit button when no reference images are resolved', () => {
+    renderNode({
+      model: 'custom-provider:openai-images:gpt-image',
+    });
+
+    expect(screen.getByRole('button', { name: 'node.imageEdit.edit' })).toBeDisabled();
+  });
+
+  it('submits edit action with resolved reference images', async () => {
+    const user = userEvent.setup();
+    vi.mocked(graphImageResolver.collectInputImages).mockReturnValue([
+      'source-image-path-or-url',
+    ]);
+
+    renderNode({
+      model: 'custom-provider:openai-images:gpt-image',
+      prompt: '@图1 turn it into watercolor',
+    });
+
+    await user.click(screen.getByRole('button', { name: 'node.imageEdit.edit' }));
+
+    await waitFor(() => {
+      expect(buildNodeGeneratePayload).toHaveBeenCalledWith(
+        expect.objectContaining({
+          action: 'edit',
+          referenceImages: ['source-image-path-or-url'],
+        })
+      );
+    });
+  });
+
+  it('disables generation controls immediately while the request is pending', async () => {
+    const user = userEvent.setup();
+    vi.mocked(graphImageResolver.collectInputImages).mockReturnValue([
+      'source-image-path-or-url',
+    ]);
+    vi.mocked(canvasAiGateway.submitGenerateImageJob).mockImplementation(
+      () => new Promise<string>(() => {})
+    );
+
+    renderNode({
+      model: 'custom-provider:openai-images:gpt-image',
+      prompt: '@图1 turn it into watercolor',
+    });
+
+    const editButton = screen.getByRole('button', { name: 'node.imageEdit.edit' });
+    const generateButton = screen.getByRole('button', { name: 'canvas.generate' });
+
+    await user.click(editButton);
+
+    await waitFor(() => {
+      expect(canvasAiGateway.submitGenerateImageJob).toHaveBeenCalledTimes(1);
+    });
+
+    expect(editButton).toBeDisabled();
+    expect(generateButton).toBeDisabled();
+
+    await user.click(generateButton);
+
+    expect(canvasAiGateway.submitGenerateImageJob).toHaveBeenCalledTimes(1);
+  });
+
+  it('uses a shared larger target for connection handles', () => {
+    renderNode();
+
+    expect(screen.getByTestId('handle-target-target')).toHaveClass('canvas-connection-handle');
+    expect(screen.getByTestId('handle-source-source')).toHaveClass('canvas-connection-handle');
+  });
 });
 
 vi.mock('@/features/canvas/models/image/grsai/nanoBananaPro', () => ({
@@ -184,13 +329,15 @@ vi.mock('@/components/ui', () => ({
   UiButton: ({
     children,
     className,
+    disabled,
     onClick,
   }: {
     children: ReactNode;
     className?: string;
+    disabled?: boolean;
     onClick?: MouseEventHandler<HTMLButtonElement>;
   }) => (
-    <button type="button" className={className} onClick={onClick}>
+    <button type="button" className={className} disabled={disabled} onClick={onClick}>
       {children}
     </button>
   ),
@@ -235,6 +382,7 @@ describe('ImageEditNode', () => {
   let updateNodeData: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
+    vi.clearAllMocks();
     updateNodeData = vi.fn();
 
     act(() => {
@@ -265,6 +413,22 @@ describe('ImageEditNode', () => {
         true
       );
     });
+
+    vi.mocked(graphImageResolver.collectInputImages).mockReturnValue([]);
+    vi.mocked(resolveGenerationContext).mockReturnValue({
+      isConfigured: true,
+      shouldSetApiKey: false,
+      apiKey: '',
+      providerRuntime: undefined,
+      resumeProviderId: 'mock-provider',
+    });
+    vi.mocked(buildNodeGeneratePayload).mockReturnValue({
+      prompt: 'mock prompt',
+      model: 'mock-model',
+      size: '1K',
+      aspectRatio: '1:1',
+    });
+    vi.mocked(canvasAiGateway.submitGenerateImageJob).mockResolvedValue('job-1');
   });
 
   afterEach(() => {
