@@ -50,7 +50,7 @@
 
 - `incomingImages` 由现有图谱引用和 `@` 关联解析逻辑产生。
 - `openai-image` 在 `tauriAiGateway.normalizeReferenceImages` 中应与普通自定义供应商一致，把本地图片转换为 data URL。
-- 后端直接把 data URL 填入 JSON `images[].image_url`。
+- 后端把 data URL 解码为图片文件 part，按 OpenAI Images edit endpoint 的 multipart/form-data 契约上传。
 
 ### UI
 
@@ -66,12 +66,12 @@
 
 - 校验 `baseUrl`、`apiKey`、`remoteModelId`。
 - `generate_image` 构造 `/images/generations` JSON 请求。
-- `edit_image` 构造 `/images/edits` JSON 请求。
+- `edit_image` 构造 `/images/edits` multipart/form-data 请求。
 - 统一解析响应：
   - 优先 `data[0].b64_json` -> `data:image/png;base64,<payload>`
   - 其次 `data[0].url`
 
-为了保持改动面小，不实现 multipart 上传、mask、批量多图输出、质量参数映射或模型专属参数。
+为了保持改动面小，不实现 mask、批量多图输出、质量参数映射或模型专属参数。
 
 ## 错误处理
 

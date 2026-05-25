@@ -15,6 +15,7 @@ vi.mock('react-i18next', () => ({
         'settings.customProviderProtocol': 'Access Protocol',
         'settings.customProviderProtocolOpenapi': 'OpenAPI Compatible',
         'settings.customProviderProtocolXaisTask': 'XAIS Task',
+        'settings.customProviderProtocolOpenaiImage': 'OpenAI Image',
         'settings.customProviderAvailableModels': 'Available Models',
         'settings.customProviderNoEnabledModels': 'No enabled models',
         'common.edit': 'Edit',
@@ -70,6 +71,28 @@ const xaisTaskProvider: CustomProviderConfig = {
   ],
 };
 
+const openAiImageProvider: CustomProviderConfig = {
+  id: 'openai-images',
+  name: 'OpenAI Images',
+  protocol: 'openai-image',
+  baseUrl: 'https://api.openai.com/v1',
+  apiKey: 'sk-openai',
+  connection: {
+    openapi: {
+      baseUrl: 'https://api.openai.com/v1',
+      apiKey: 'sk-openai',
+    },
+  },
+  models: [
+    {
+      id: 'gpt-image',
+      displayName: 'GPT Image',
+      remoteModelId: 'gpt-image-1',
+      enabled: true,
+    },
+  ],
+};
+
 describe('CustomProvidersPage', () => {
   it('renders empty state and add button when there are no suppliers', () => {
     render(
@@ -88,7 +111,7 @@ describe('CustomProvidersPage', () => {
   it('renders protocol and enabled model summaries for each supplier row', () => {
     render(
       <CustomProvidersPage
-        providers={[openApiProvider, xaisTaskProvider]}
+        providers={[openApiProvider, xaisTaskProvider, openAiImageProvider]}
         onAdd={vi.fn()}
         onEdit={vi.fn()}
         onDelete={vi.fn()}
@@ -108,6 +131,13 @@ describe('CustomProvidersPage', () => {
     );
     expect(screen.getByText('Async Gateway').parentElement).toHaveTextContent(
       'Available Models: Async Worker'
+    );
+    expect(screen.getByText('OpenAI Images')).toBeInTheDocument();
+    expect(screen.getByText('OpenAI Images').parentElement).toHaveTextContent(
+      'Access Protocol: OpenAI Image'
+    );
+    expect(screen.getByText('OpenAI Images').parentElement).toHaveTextContent(
+      'Available Models: GPT Image'
     );
     expect(screen.queryByText('Disabled Model')).not.toBeInTheDocument();
   });

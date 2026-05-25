@@ -392,6 +392,7 @@ mod tests {
             model: "custom-provider:gateway-xais:model-main".to_string(),
             size: "1K".to_string(),
             aspect_ratio: "16:9".to_string(),
+            action: None,
             reference_images: Some(vec![
                 "https://example.com/ref.png".to_string(),
                 "hz/260416/200/BggaevGQ.png".to_string(),

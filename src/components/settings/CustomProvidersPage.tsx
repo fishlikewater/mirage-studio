@@ -23,6 +23,9 @@ function buildProtocolSummary(provider: CustomProviderConfig, t: (key: string) =
   if (provider.protocol === 'xais-task') {
     return t('settings.customProviderProtocolXaisTask');
   }
+  if (provider.protocol === 'openai-image') {
+    return t('settings.customProviderProtocolOpenaiImage');
+  }
 
   return t('settings.customProviderProtocolOpenapi');
 }

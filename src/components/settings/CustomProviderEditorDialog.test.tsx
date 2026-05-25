@@ -150,6 +150,52 @@ describe('CustomProviderEditorDialog', () => {
     });
   });
 
+  it('switches to openai-image fields and saves openapi-style connection data', async () => {
+    const user = userEvent.setup();
+    const onSave = vi.fn();
+
+    render(
+      <CustomProviderEditorDialog
+        isOpen
+        mode="create"
+        initialProvider={null}
+        onClose={vi.fn()}
+        onSave={onSave}
+      />
+    );
+
+    await user.click(screen.getByRole('button', { name: 'settings.customProviderProtocol' }));
+    await user.click(
+      screen.getByRole('option', { name: 'settings.customProviderProtocolOpenaiImage' })
+    );
+
+    expect(screen.getByLabelText('settings.customProviderBaseUrl')).toBeInTheDocument();
+
+    await user.type(screen.getByLabelText('settings.customProviderName'), 'OpenAI Images');
+    await user.type(
+      screen.getByLabelText('settings.customProviderBaseUrl'),
+      'https://api.openai.com/v1'
+    );
+    await user.type(screen.getByLabelText('settings.customProviderApiKey'), 'sk-openai');
+    await user.type(screen.getByLabelText('settings.customProviderModelName'), 'GPT Image');
+    await user.type(screen.getByLabelText('settings.customProviderModelId'), 'gpt-image-1');
+    await user.click(screen.getByRole('button', { name: 'common.save' }));
+
+    expect(onSave).toHaveBeenCalledTimes(1);
+    expect(onSave.mock.calls[0][0]).toMatchObject({
+      name: 'OpenAI Images',
+      protocol: 'openai-image',
+      baseUrl: 'https://api.openai.com/v1',
+      apiKey: 'sk-openai',
+      connection: {
+        openapi: {
+          baseUrl: 'https://api.openai.com/v1',
+          apiKey: 'sk-openai',
+        },
+      },
+    });
+  });
+
   it('prefills edit mode and exposes fixed scroll containers', async () => {
     const user = userEvent.setup();
     const onSave = vi.fn();

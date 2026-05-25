@@ -6,6 +6,7 @@ export interface GenerateRequest {
   model: string;
   size: string;
   aspect_ratio: string;
+  action?: 'generate' | 'edit';
   reference_images?: string[];
   extra_params?: Record<string, unknown>;
   provider_runtime?: RuntimeProviderConfig;
@@ -57,6 +58,7 @@ function sanitizeGenerateRequestForLog(request: GenerateRequest): Record<string,
     model: request.model,
     size: request.size,
     aspect_ratio: request.aspect_ratio,
+    action: request.action,
     reference_images_count: request.reference_images?.length ?? 0,
     reference_images_preview: (request.reference_images ?? []).map((item) =>
       truncateBase64Like(item)

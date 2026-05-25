@@ -32,11 +32,14 @@ export interface GraphImageResolver {
   collectInputImages: (nodeId: string, nodes: CanvasNode[], edges: CanvasEdge[]) => string[];
 }
 
+export type GenerateImageAction = 'generate' | 'edit';
+
 export interface GenerateImagePayload {
   prompt: string;
   model: string;
   size: string;
   aspectRatio: string;
+  action?: GenerateImageAction;
   referenceImages?: string[];
   extraParams?: Record<string, unknown>;
   providerRuntime?: RuntimeProviderConfig;

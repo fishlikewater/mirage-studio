@@ -1,4 +1,4 @@
-export type CustomProviderProtocol = 'openapi' | 'xais-task';
+export type CustomProviderProtocol = 'openapi' | 'xais-task' | 'openai-image';
 
 export interface CustomProviderModelConfig {
   id: string;
@@ -64,7 +64,11 @@ function preferTrimmed(
 }
 
 function normalizeProtocol(value: string | null | undefined): CustomProviderProtocol {
-  return value === 'xais-task' ? 'xais-task' : DEFAULT_PROTOCOL;
+  if (value === 'xais-task' || value === 'openai-image') {
+    return value;
+  }
+
+  return DEFAULT_PROTOCOL;
 }
 
 function normalizeOutputFormat(

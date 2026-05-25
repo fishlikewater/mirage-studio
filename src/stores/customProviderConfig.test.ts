@@ -73,6 +73,44 @@ describe('customProviderConfig', () => {
     });
   });
 
+  it('normalizes openai-image providers into openapi-style connection fields', () => {
+    const providers = normalizeCustomProviders([
+      {
+        id: ' openai images ',
+        name: ' OpenAI Images ',
+        protocol: 'openai-image',
+        connection: {
+          openapi: {
+            baseUrl: ' https://api.openai.com/v1/ ',
+            apiKey: ' sk-openai ',
+          },
+        },
+        models: [
+          {
+            id: 'gpt-image',
+            displayName: 'GPT Image',
+            remoteModelId: 'gpt-image-1',
+            enabled: true,
+          },
+        ],
+      } as unknown as never,
+    ]);
+
+    expect(providers[0]).toMatchObject({
+      id: 'openai-images',
+      name: 'OpenAI Images',
+      protocol: 'openai-image',
+      baseUrl: 'https://api.openai.com/v1',
+      apiKey: 'sk-openai',
+      connection: {
+        openapi: {
+          baseUrl: 'https://api.openai.com/v1',
+          apiKey: 'sk-openai',
+        },
+      },
+    });
+  });
+
   it('builds stable internal ids for custom-provider models', () => {
     expect(buildCustomProviderModelId('gateway-a', 'model-main')).toBe(
       'custom-provider:gateway-a:model-main'

@@ -1,0 +1,14 @@
+{"file": "AGENTS.md", "reason": "Project collaboration rules and workflow gates"}
+{"file": ".cowork-flow/workflow.md", "reason": "Project workflow and conventions"}
+{"file": ".cowork-flow/spec/guides/index.md", "reason": "Pre-implementation thinking guides"}
+{"file": ".cowork-flow/spec/guides/pre-implementation-checklist.md", "reason": "Mandatory pre-coding checklist"}
+{"file": ".cowork-flow/spec/backend/index.md", "reason": "Backend development guide"}
+{"file": ".cowork-flow/spec/frontend/index.md", "reason": "Frontend development guide"}
+{"file": ".cowork-flow/changes/openai-image-protocol/proposal.md", "reason": "Approved change proposal"}
+{"file": ".cowork-flow/changes/openai-image-protocol/specs/custom-provider-openai-image/spec.md", "reason": "Approved behavior spec"}
+{"file": ".cowork-flow/changes/openai-image-protocol/design.md", "reason": "Approved L2 design"}
+{"file": ".cowork-flow/plans/2026-05-21-openai-image-protocol.md", "reason": "Approved implementation plan"}
+{"file": ".cowork-flow/spec/frontend/type-safety.md", "reason": "Frontend type contract guidance"}
+{"file": ".cowork-flow/spec/frontend/component-guidelines.md", "reason": "Frontend component guidance"}
+{"file": ".cowork-flow/spec/backend/error-handling.md", "reason": "Backend error handling guidance"}
+{"file": ".cowork-flow/spec/backend/quality-guidelines.md", "reason": "Backend quality guidance"}

@@ -6,12 +6,18 @@ from __future__ import annotations
 
 import argparse
 import re
-import shutil
 import sys
 from datetime import datetime
 from pathlib import Path
 
-from common.paths import DIR_ARCHIVE, DIR_CHANGES, DIR_WORKFLOW, get_repo_root
+from common.archive_utils import archive_directory_resumable
+from common.paths import (
+    DIR_ARCHIVE,
+    DIR_CHANGES,
+    DIR_WORKFLOW,
+    generate_task_date_prefix,
+    get_repo_root,
+)
 
 
 SLUG_PATTERN = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
@@ -92,11 +98,8 @@ def _has_text(path: Path) -> bool:
     return path.is_file() and bool(path.read_text(encoding="utf-8").strip())
 
 
-def _spec_files(change_dir: Path) -> list[Path]:
-    specs_dir = change_dir / "specs"
-    if not specs_dir.is_dir():
-        return []
-    return sorted(path for path in specs_dir.rglob("spec.md") if path.is_file())
+def _spec_file(change_dir: Path) -> Path:
+    return change_dir / "spec.md"
 
 
 def _resolve_link(repo_root: Path, base_dir: str, value: object) -> Path | None:
@@ -110,9 +113,52 @@ def _resolve_link(repo_root: Path, base_dir: str, value: object) -> Path | None:
         return raw_path
 
     direct = repo_root / raw_path
-    if direct.exists():
+    workflow_base = Path(DIR_WORKFLOW) / base_dir
+    if direct.exists() or raw_path.parts[:2] == workflow_base.parts:
         return direct
-    return repo_root / DIR_WORKFLOW / base_dir / raw_path
+    return repo_root / workflow_base / raw_path
+
+
+def _archived_task_link(repo_root: Path, task_name: str) -> str | None:
+    archive_root = repo_root / DIR_WORKFLOW / "tasks" / DIR_ARCHIVE
+    if not archive_root.is_dir():
+        return None
+
+    matches = [path for path in archive_root.glob(f"*/{task_name}") if path.is_dir()]
+    if len(matches) != 1:
+        return None
+
+    relative = matches[0].relative_to(archive_root)
+    return str(Path(DIR_ARCHIVE) / relative).replace("\\", "/")
+
+
+def _normalize_task_link(repo_root: Path, value: object) -> object:
+    if not isinstance(value, str) or not value.strip():
+        return value
+
+    target = _resolve_link(repo_root, "tasks", value)
+    tasks_root = repo_root / DIR_WORKFLOW / "tasks"
+    archive_root = tasks_root / DIR_ARCHIVE
+    if target is None:
+        return value
+
+    if not target.exists():
+        return _archived_task_link(repo_root, target.name) or value
+
+    try:
+        relative = target.resolve().relative_to(archive_root.resolve())
+    except ValueError:
+        return value
+
+    return str(Path(DIR_ARCHIVE) / relative).replace("\\", "/")
+
+
+def _normalize_archive_metadata(repo_root: Path, change_dir: Path) -> None:
+    metadata = _read_metadata(change_dir)
+    normalized_task = _normalize_task_link(repo_root, metadata.get("task"))
+    if normalized_task != metadata.get("task"):
+        metadata["task"] = normalized_task
+        _write_metadata(change_dir, metadata)
 
 
 def _validate_link(repo_root: Path, metadata: dict[str, object], field: str, base_dir: str) -> str | None:
@@ -151,10 +197,8 @@ def validate_change(repo_root: Path, slug: str, quiet: bool = False) -> bool:
             errors.append("proposal.md is missing or empty")
 
         documentation_only = metadata.get("documentation_only") is True
-        if not documentation_only:
-            specs = _spec_files(change_dir)
-            if not specs or not any(_has_text(spec) for spec in specs):
-                errors.append("specs must include at least one non-empty behavior spec")
+        if not documentation_only and not _has_text(_spec_file(change_dir)):
+            errors.append("spec.md is missing or empty")
 
         if level == "L2" and not _has_text(change_dir / "design.md"):
             errors.append("design.md is required for L2 changes")
@@ -183,23 +227,23 @@ def create_change(args: argparse.Namespace) -> int:
     if not _validate_slug(slug):
         return 2
 
-    change_dir = _change_dir(repo_root, slug)
+    dir_name = f"{generate_task_date_prefix()}-{slug}"
+    change_dir = _change_dir(repo_root, dir_name)
     if change_dir.exists():
-        print(f"Error: change already exists: {slug}", file=sys.stderr)
+        print(f"Error: change already exists: {dir_name}", file=sys.stderr)
         return 1
 
     change_dir.mkdir(parents=True)
-    (change_dir / "specs").mkdir()
     (change_dir / "proposal.md").write_text(
-        f"# {slug}\n\nDescribe the proposed behavior change.\n",
+        f"# {dir_name}\n\nDescribe the proposed behavior change.\n",
         encoding="utf-8",
     )
     (change_dir / "design.md").write_text("", encoding="utf-8")
-    (change_dir / "specs" / ".gitkeep").write_text("", encoding="utf-8")
+    _spec_file(change_dir).write_text("", encoding="utf-8")
     _write_metadata(
         change_dir,
         {
-            "slug": slug,
+            "slug": dir_name,
             "status": "draft",
             "level": args.level,
             "created_at": _now_iso(),
@@ -209,7 +253,7 @@ def create_change(args: argparse.Namespace) -> int:
         },
     )
 
-    print(f"created {slug}")
+    print(f"created {dir_name}")
     return 0
 
 
@@ -221,22 +265,25 @@ def validate_command(args: argparse.Namespace) -> int:
 def archive_change(args: argparse.Namespace) -> int:
     repo_root = get_repo_root()
     slug = args.slug
+    source = _change_dir(repo_root, slug)
+    if source.is_dir():
+        _normalize_archive_metadata(repo_root, source)
+
     if not validate_change(repo_root, slug, quiet=True):
         return 1
 
-    source = _change_dir(repo_root, slug)
     month = datetime.now().astimezone().strftime("%Y-%m")
     destination = _archive_dir(repo_root) / month / slug
-    if destination.exists():
-        print(f"Error: archive destination already exists: {destination}", file=sys.stderr)
+    result = archive_directory_resumable(source, destination)
+    if not result.ok:
+        level = "Warning" if result.partial else "Error"
+        print(f"{level}: {result.message}", file=sys.stderr)
         return 1
-
-    destination.parent.mkdir(parents=True, exist_ok=True)
-    shutil.move(str(source), str(destination))
 
     metadata = _read_metadata(destination)
     metadata["status"] = "archived"
     metadata["archived_at"] = _now_iso()
+    metadata["task"] = _normalize_task_link(repo_root, metadata.get("task"))
     _write_metadata(destination, metadata)
 
     print(f"archived {slug}")

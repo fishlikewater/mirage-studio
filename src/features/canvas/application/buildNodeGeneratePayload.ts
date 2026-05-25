@@ -7,6 +7,7 @@ interface BuildNodeGeneratePayloadInput {
   requestModel: string;
   size: string;
   aspectRatio: string;
+  action?: GenerateImagePayload['action'];
   referenceImages?: string[];
   extraParams?: Record<string, unknown>;
   providerRuntime?: RuntimeProviderConfig;
@@ -20,6 +21,7 @@ export function buildNodeGeneratePayload(
     model: input.requestModel,
     size: input.size,
     aspectRatio: input.aspectRatio,
+    action: input.action,
     referenceImages: input.referenceImages,
     extraParams: input.extraParams,
     providerRuntime: input.providerRuntime,

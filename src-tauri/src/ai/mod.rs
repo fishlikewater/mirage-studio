@@ -29,6 +29,7 @@ pub struct GenerateRequest {
     pub model: String,
     pub size: String,
     pub aspect_ratio: String,
+    pub action: Option<String>,
     pub reference_images: Option<Vec<String>>,
     pub extra_params: Option<HashMap<String, serde_json::Value>>,
     pub provider_runtime: Option<RuntimeProviderConfig>,

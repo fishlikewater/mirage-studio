@@ -113,7 +113,8 @@
       "promptRequired": "Please enter a prompt",
       "apiKeyRequired": "Please set API key in Settings",
       "resultTitle": "Result Image",
-      "promptPlaceholder": "Describe anything you want to generate or edit"
+      "promptPlaceholder": "Describe anything you want to generate or edit",
+      "edit": "Edit"
     },
     "upload": {
       "uploadedAlt": "Uploaded image",
@@ -231,10 +232,12 @@
     "customProviderProtocol": "Access Protocol",
     "customProviderProtocolOpenapi": "OpenAPI Compatible",
     "customProviderProtocolXaisTask": "XAIS Task",
+    "customProviderProtocolOpenaiImage": "OpenAI Image",
     "customProviderAvailableModels": "Available Models",
     "customProviderConnectionSection": "Connection",
     "customProviderConnectionOpenapiDesc": "Use the synchronous OpenAPI-compatible chat completions endpoint.",
     "customProviderConnectionXaisTaskDesc": "Use the recoverable XAIS asynchronous task endpoints for submit, wait, and asset access.",
+    "customProviderConnectionOpenaiImageDesc": "Use the OpenAI Images API generation and edit endpoints.",
     "customProviderConnection": "Connection Fields",
     "customProviderConnectionSubmitBaseUrl": "Submit Base URL",
     "customProviderConnectionWaitBaseUrl": "Wait Base URL",

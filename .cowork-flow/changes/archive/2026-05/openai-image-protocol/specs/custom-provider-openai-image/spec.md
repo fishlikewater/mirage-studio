@@ -36,10 +36,10 @@
 - 点击“编辑”时：
   - 前端提交同一个生成 payload，但必须显式标记动作为 `edit`。
   - 后端调用 `{baseUrl}/images/edits`。
-  - 请求体使用 JSON 形式，至少包含：
+  - 请求体使用 OpenAI Images API 官方 multipart/form-data 形式，至少包含：
     - `model`
     - `prompt`
-    - `images: [{ image_url: <data-url-or-url> }, ...]`
+    - 一个或多个参考图文件 part（由现有 `referenceImages` 的 data URL 内容转换而来）
     - `n: 1`
   - 响应解析规则与生成一致，优先 `data[0].b64_json`，兼容 `data[0].url`。
 
@@ -58,6 +58,6 @@
 - [ ] 没有通过 `@` 关联参考图时，“编辑”按钮禁用。
 - [ ] 有通过 `@` 关联参考图时，点击“编辑”会提交编辑动作，并把关联图片传给后端。
 - [ ] 后端生成请求使用 `/images/generations`。
-- [ ] 后端编辑请求使用 `/images/edits`，并用 JSON `images` 字段表达参考图。
+- [ ] 后端编辑请求使用 `/images/edits`，并用 multipart 图片文件 part 表达参考图。
 - [ ] `b64_json` 响应转换为 `data:image/png;base64,...` 后能被现有图片持久化流程处理。
 - [ ] 既有 `openapi` 与 `xais-task` 测试保持通过。

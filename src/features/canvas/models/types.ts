@@ -8,7 +8,7 @@ export interface ModelProviderDefinition {
   label: string;
 }
 
-export type RuntimeCustomProviderProtocol = 'openapi' | 'xais-task';
+export type RuntimeCustomProviderProtocol = 'openapi' | 'xais-task' | 'openai-image';
 
 export interface RuntimeProviderConfig {
   kind: 'builtin' | 'custom-provider';

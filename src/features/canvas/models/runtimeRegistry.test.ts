@@ -53,6 +53,30 @@ const xaisProviders: CustomProviderConfig[] = [
   },
 ];
 
+const openAiImageProviders: CustomProviderConfig[] = [
+  {
+    id: 'openai-images',
+    name: 'OpenAI Images',
+    protocol: 'openai-image',
+    baseUrl: 'https://api.openai.com/v1',
+    apiKey: 'sk-openai',
+    connection: {
+      openapi: {
+        baseUrl: 'https://api.openai.com/v1',
+        apiKey: 'sk-openai',
+      },
+    },
+    models: [
+      {
+        id: 'gpt-image',
+        displayName: 'GPT Image',
+        remoteModelId: 'gpt-image-1',
+        enabled: true,
+      },
+    ],
+  },
+];
+
 describe('runtimeRegistry', () => {
   it('adds custom providers after built-in providers', () => {
     const providers = listRuntimeModelProviders(customProviders);
@@ -137,6 +161,28 @@ describe('runtimeRegistry', () => {
       assetBaseUrl: 'https://svt1.dchai.cn',
       defaultOutputFormat: 'image/png',
       remoteModelId: 'Nano_Banana_Pro_2K_0',
+    });
+  });
+
+  it('exposes openai-image runtime provider metadata', () => {
+    const providers = listRuntimeModelProviders(openAiImageProviders);
+    const runtimeModels = listRuntimeImageModels(openAiImageProviders);
+    const openAiImageModel = runtimeModels.find(
+      (model) => model.id === 'custom-provider:openai-images:gpt-image'
+    );
+
+    expect(providers[providers.length - 1]).toMatchObject({
+      id: 'custom-provider:openai-images',
+      runtimeKind: 'custom-provider',
+      configured: true,
+      protocol: 'openai-image',
+    });
+    expect(openAiImageModel?.runtimeProvider).toMatchObject({
+      kind: 'custom-provider',
+      protocol: 'openai-image',
+      baseUrl: 'https://api.openai.com/v1',
+      apiKey: 'sk-openai',
+      remoteModelId: 'gpt-image-1',
     });
   });
 });

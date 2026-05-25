@@ -113,7 +113,8 @@
       "promptRequired": "请输入提示词",
       "apiKeyRequired": "请在设置中填写 API Key",
       "resultTitle": "结果图片",
-      "promptPlaceholder": "描述任何你想要生成或编辑的内容"
+      "promptPlaceholder": "描述任何你想要生成或编辑的内容",
+      "edit": "编辑"
     },
     "upload": {
       "uploadedAlt": "已上传图片",
@@ -231,10 +232,12 @@
     "customProviderProtocol": "接入协议",
     "customProviderProtocolOpenapi": "OpenAPI 兼容",
     "customProviderProtocolXaisTask": "XAIS Task",
+    "customProviderProtocolOpenaiImage": "OpenAI Image",
     "customProviderAvailableModels": "可用模型",
     "customProviderConnectionSection": "连接配置",
     "customProviderConnectionOpenapiDesc": "使用同步的 OpenAPI 兼容 chat completions 接口。",
     "customProviderConnectionXaisTaskDesc": "使用可恢复的 XAIS 异步任务接口，分别配置提交、轮询与资源访问地址。",
+    "customProviderConnectionOpenaiImageDesc": "使用 OpenAI Images API 的生成与编辑接口。",
     "customProviderConnection": "连接字段",
     "customProviderConnectionSubmitBaseUrl": "提交接口地址",
     "customProviderConnectionWaitBaseUrl": "轮询接口地址",

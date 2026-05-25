@@ -245,6 +245,7 @@ export function CustomProviderEditorDialog({
                 >
                   <option value="openapi">{t('settings.customProviderProtocolOpenapi')}</option>
                   <option value="xais-task">{t('settings.customProviderProtocolXaisTask')}</option>
+                  <option value="openai-image">{t('settings.customProviderProtocolOpenaiImage')}</option>
                 </UiSelect>
               </label>
             </div>
@@ -257,6 +258,8 @@ export function CustomProviderEditorDialog({
                 <div className="mt-1 text-[11px] text-text-muted">
                   {draft.protocol === 'xais-task'
                     ? t('settings.customProviderConnectionXaisTaskDesc')
+                    : draft.protocol === 'openai-image'
+                      ? t('settings.customProviderConnectionOpenaiImageDesc')
                     : t('settings.customProviderConnectionOpenapiDesc')}
                 </div>
               </div>

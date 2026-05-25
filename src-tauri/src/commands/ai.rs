@@ -23,6 +23,7 @@ static ACTIVE_NON_RESUMABLE_JOB_IDS: std::sync::OnceLock<Arc<RwLock<HashSet<Stri
     std::sync::OnceLock::new();
 const CUSTOM_OPENAPI_PROVIDER_ID: &str = "openapi_compat";
 const CUSTOM_XAIS_TASK_PROVIDER_ID: &str = "xais_task";
+const CUSTOM_OPENAI_IMAGE_PROVIDER_ID: &str = "openai_image";
 
 fn get_registry() -> &'static ProviderRegistry {
     REGISTRY.get_or_init(|| {
@@ -44,6 +45,7 @@ pub struct GenerateRequestDto {
     pub model: String,
     pub size: String,
     pub aspect_ratio: String,
+    pub action: Option<String>,
     pub reference_images: Option<Vec<String>>,
     pub extra_params: Option<HashMap<String, Value>>,
     pub provider_runtime: Option<crate::ai::RuntimeProviderConfig>,
@@ -286,6 +288,17 @@ fn is_custom_xais_task_runtime(runtime: Option<&crate::ai::RuntimeProviderConfig
     matches!(resolve_custom_provider_protocol(runtime), Some("xais-task"))
 }
 
+fn is_custom_openai_image_runtime(runtime: Option<&crate::ai::RuntimeProviderConfig>) -> bool {
+    matches!(resolve_custom_provider_protocol(runtime), Some("openai-image"))
+}
+
+fn normalize_action(action: Option<&str>) -> &'static str {
+    match action {
+        Some("edit") => "edit",
+        _ => "generate",
+    }
+}
+
 #[tauri::command]
 pub async fn set_api_key(provider: String, api_key: String) -> Result<(), String> {
     info!("Setting API key for provider: {}", provider);
@@ -313,12 +326,71 @@ pub async fn submit_generate_image_job(
         model: request.model,
         size: request.size,
         aspect_ratio: request.aspect_ratio,
+        action: request.action,
         reference_images: request.reference_images,
         extra_params: request.extra_params,
         provider_runtime: request.provider_runtime,
     };
 
     let job_id = Uuid::new_v4().to_string();
+
+    if is_custom_openai_image_runtime(req.provider_runtime.as_ref()) {
+        let runtime = req
+            .provider_runtime
+            .clone()
+            .ok_or_else(|| "Missing custom openai-image provider runtime config".to_string())?;
+
+        insert_generation_job(
+            &app,
+            job_id.as_str(),
+            CUSTOM_OPENAI_IMAGE_PROVIDER_ID,
+            "running",
+            false,
+            None,
+            None,
+            None,
+            None,
+        )?;
+        {
+            let mut active_set = active_non_resumable_job_ids().write().await;
+            active_set.insert(job_id.clone());
+        }
+
+        let app_handle = app.clone();
+        let spawned_job_id = job_id.clone();
+        tauri::async_runtime::spawn(async move {
+            let result = match normalize_action(req.action.as_deref()) {
+                "edit" => crate::ai::providers::openai_image::edit(&req, &runtime).await,
+                _ => crate::ai::providers::openai_image::generate(&req, &runtime).await,
+            };
+            let update_result = match result {
+                Ok(image_source) => update_generation_job(
+                    &app_handle,
+                    spawned_job_id.as_str(),
+                    "succeeded",
+                    Some(image_source.as_str()),
+                    None,
+                ),
+                Err(error) => {
+                    let message = error.to_string();
+                    update_generation_job(
+                        &app_handle,
+                        spawned_job_id.as_str(),
+                        "failed",
+                        None,
+                        Some(message.as_str()),
+                    )
+                }
+            };
+            if let Err(error) = update_result {
+                info!("Failed to update custom openai-image generation job: {}", error);
+            }
+            let mut active_set = active_non_resumable_job_ids().write().await;
+            active_set.remove(spawned_job_id.as_str());
+        });
+
+        return Ok(job_id);
+    }
 
     if is_custom_openapi_runtime(req.provider_runtime.as_ref()) {
         let runtime = req
@@ -737,10 +809,23 @@ pub async fn generate_image(request: GenerateRequestDto) -> Result<String, Strin
         model: request.model,
         size: request.size,
         aspect_ratio: request.aspect_ratio,
+        action: request.action,
         reference_images: request.reference_images,
         extra_params: request.extra_params,
         provider_runtime: request.provider_runtime,
     };
+
+    if is_custom_openai_image_runtime(req.provider_runtime.as_ref()) {
+        let runtime = req
+            .provider_runtime
+            .clone()
+            .ok_or_else(|| "Missing custom openai-image provider runtime config".to_string())?;
+        return match normalize_action(req.action.as_deref()) {
+            "edit" => crate::ai::providers::openai_image::edit(&req, &runtime).await,
+            _ => crate::ai::providers::openai_image::generate(&req, &runtime).await,
+        }
+        .map_err(|error| error.to_string());
+    }
 
     if is_custom_openapi_runtime(req.provider_runtime.as_ref()) {
         let runtime = req
@@ -774,4 +859,36 @@ pub async fn generate_image(request: GenerateRequestDto) -> Result<String, Strin
 #[tauri::command]
 pub async fn list_models() -> Result<Vec<String>, String> {
     Ok(get_registry().list_models())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{is_custom_openai_image_runtime, normalize_action};
+
+    #[test]
+    fn custom_openai_image_runtime_detects_protocol() {
+        let runtime = crate::ai::RuntimeProviderConfig {
+            kind: "custom-provider".to_string(),
+            provider_profile_id: None,
+            provider_display_name: None,
+            protocol: Some("openai-image".to_string()),
+            base_url: Some("https://api.openai.com/v1".to_string()),
+            api_key: Some("sk-openai".to_string()),
+            submit_base_url: None,
+            wait_base_url: None,
+            asset_base_url: None,
+            default_output_format: None,
+            remote_model_id: Some("gpt-image-1".to_string()),
+        };
+
+        assert!(is_custom_openai_image_runtime(Some(&runtime)));
+    }
+
+    #[test]
+    fn custom_openai_image_action_defaults_to_generate() {
+        assert_eq!(normalize_action(None), "generate");
+        assert_eq!(normalize_action(Some("generate")), "generate");
+        assert_eq!(normalize_action(Some("edit")), "edit");
+        assert_eq!(normalize_action(Some("unexpected")), "generate");
+    }
 }

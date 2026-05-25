@@ -6,6 +6,7 @@ pub mod ppio;
 pub mod grsai;
 pub mod kie;
 pub mod fal;
+pub mod openai_image;
 pub mod openapi_compat;
 pub mod xais_task;
 
