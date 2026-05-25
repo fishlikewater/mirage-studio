@@ -108,6 +108,20 @@ describe('CustomProvidersPage', () => {
     expect(screen.getByText('No custom providers yet. Use the button above to add one.')).toBeInTheDocument();
   });
 
+  it('keeps the add supplier button from shrinking beside header text', () => {
+    render(
+      <CustomProvidersPage
+        providers={[]}
+        onAdd={vi.fn()}
+        onEdit={vi.fn()}
+        onDelete={vi.fn()}
+      />
+    );
+
+    expect(screen.getByTestId('custom-providers-page-heading-copy')).toHaveClass('min-w-0');
+    expect(screen.getByRole('button', { name: 'Add Supplier' })).toHaveClass('shrink-0');
+  });
+
   it('renders protocol and enabled model summaries for each supplier row', () => {
     render(
       <CustomProvidersPage

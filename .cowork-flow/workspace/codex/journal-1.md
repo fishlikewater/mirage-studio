@@ -38,3 +38,35 @@ Improved canvas generation click feedback and connection handle usability.
 ### Follow-up Actions
 
 - None, current task is complete
+
+
+## Session 2: OpenAI image auto edit
+
+**Date**: 2026-05-25
+**Task**: OpenAI image auto edit
+
+### Summary
+
+Removed the separate openai-image edit button, made Generate automatically submit edit action when references exist, protected the custom provider add button from flex shrink, and verified with focused Vitest plus build.
+
+### Main Changes
+
+
+
+### Git Commit
+
+| Hash | Note |
+|------|------|
+| `pending` | See git log |
+
+### Verification
+
+- [OK] (add verification results)
+
+### Status
+
+[OK] **Completed**
+
+### Follow-up Actions
+
+- None, current task is complete

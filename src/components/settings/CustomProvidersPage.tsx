@@ -41,12 +41,12 @@ export function CustomProvidersPage({
 
   return (
     <>
-      <div className="flex items-center justify-between border-b border-border-dark px-6 py-5">
-        <div>
+      <div className="flex items-center justify-between gap-4 border-b border-border-dark px-6 py-5">
+        <div data-testid="custom-providers-page-heading-copy" className="min-w-0">
           <h2 className="text-lg font-semibold text-text-dark">{t('settings.suppliers')}</h2>
           <p className="mt-1 text-sm text-text-muted">{t('settings.suppliersDesc')}</p>
         </div>
-        <UiButton type="button" variant="primary" size="sm" onClick={onAdd}>
+        <UiButton type="button" variant="primary" size="sm" className="shrink-0" onClick={onAdd}>
           {t('settings.addSupplier')}
         </UiButton>
       </div>

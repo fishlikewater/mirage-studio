@@ -49,7 +49,6 @@ import {
 import { resolveGenerationContext } from '@/features/canvas/application/runtimeGenerationContext';
 import { buildNodeGeneratePayload } from '@/features/canvas/application/buildNodeGeneratePayload';
 import { appendPromptTemplateContent } from '@/features/canvas/application/promptTemplateText';
-import type { GenerateImageAction } from '@/features/canvas/application/ports';
 import {
   DEFAULT_IMAGE_MODEL_ID,
   getRuntimeImageModel,
@@ -299,7 +298,6 @@ export const ImageEditNode = memo(({ id, data, selected, width, height }: ImageE
     [apiKeys, selectedModel]
   );
   const isOpenAiImageProtocol = generationContext.providerRuntime?.protocol === 'openai-image';
-  const canEditWithOpenAiImage = incomingImages.length > 0 && generationContext.isConfigured;
   const effectiveExtraParams = useMemo(
     () => ({
       ...(data.extraParams ?? {}),
@@ -476,12 +474,8 @@ export const ImageEditNode = memo(({ id, data, selected, width, height }: ImageE
     };
   }, []);
 
-  const handleGenerate = useCallback(async (action: GenerateImageAction = 'generate') => {
+  const handleGenerate = useCallback(async () => {
     if (isSubmittingGenerationRef.current) {
-      return;
-    }
-
-    if (action === 'edit' && incomingImages.length === 0) {
       return;
     }
 
@@ -550,13 +544,14 @@ export const ImageEditNode = memo(({ id, data, selected, width, height }: ImageE
           }
         }
 
+        const shouldUseOpenAiImageEdit = isOpenAiImageProtocol && incomingImages.length > 0;
         const jobId = await canvasAiGateway.submitGenerateImageJob(
           buildNodeGeneratePayload({
             prompt,
             requestModel: requestResolution.requestModel,
             size: selectedResolution.value,
             aspectRatio: resolvedRequestAspectRatio,
-            action: action === 'edit' ? action : undefined,
+            action: shouldUseOpenAiImageEdit ? 'edit' : undefined,
             referenceImages: incomingImages,
             extraParams: effectiveExtraParams,
             providerRuntime: generationContext.providerRuntime,
@@ -639,6 +634,7 @@ export const ImageEditNode = memo(({ id, data, selected, width, height }: ImageE
     effectiveExtraParams,
     id,
     incomingImages,
+    isOpenAiImageProtocol,
     requestResolution.requestModel,
     selectedAspectRatio.value,
     selectedModel.id,
@@ -940,20 +936,6 @@ export const ImageEditNode = memo(({ id, data, selected, width, height }: ImageE
 
         <div className="ml-auto" />
 
-        {isOpenAiImageProtocol && (
-          <UiButton
-            onClick={(event) => {
-              event.stopPropagation();
-              void handleGenerate('edit');
-            }}
-            disabled={!canEditWithOpenAiImage || isSubmittingGeneration}
-            variant="muted"
-            className={`shrink-0 ${NODE_CONTROL_PRIMARY_BUTTON_CLASS}`}
-          >
-            <Sparkles className={NODE_CONTROL_ICON_CLASS} strokeWidth={2.8} />
-            {t('node.imageEdit.edit')}
-          </UiButton>
-        )}
 
         <UiButton
           onClick={(event) => {

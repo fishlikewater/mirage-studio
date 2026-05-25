@@ -219,15 +219,15 @@ describe('ImageEditNode openai-image edit action', () => {
     });
   });
 
-  it('disables the edit button when no reference images are resolved', () => {
+  it('does not render a separate edit button for openai-image models', () => {
     renderNode({
       model: 'custom-provider:openai-images:gpt-image',
     });
 
-    expect(screen.getByRole('button', { name: 'node.imageEdit.edit' })).toBeDisabled();
+    expect(screen.queryByRole('button', { name: 'node.imageEdit.edit' })).not.toBeInTheDocument();
   });
 
-  it('submits edit action with resolved reference images', async () => {
+  it('uses edit action when generating with openai-image references', async () => {
     const user = userEvent.setup();
     vi.mocked(graphImageResolver.collectInputImages).mockReturnValue([
       'source-image-path-or-url',
@@ -238,13 +238,33 @@ describe('ImageEditNode openai-image edit action', () => {
       prompt: '@图1 turn it into watercolor',
     });
 
-    await user.click(screen.getByRole('button', { name: 'node.imageEdit.edit' }));
+    await user.click(screen.getByRole('button', { name: 'canvas.generate' }));
 
     await waitFor(() => {
       expect(buildNodeGeneratePayload).toHaveBeenCalledWith(
         expect.objectContaining({
           action: 'edit',
           referenceImages: ['source-image-path-or-url'],
+        })
+      );
+    });
+  });
+
+  it('uses normal generation for openai-image models without references', async () => {
+    const user = userEvent.setup();
+
+    renderNode({
+      model: 'custom-provider:openai-images:gpt-image',
+      prompt: 'make a poster',
+    });
+
+    await user.click(screen.getByRole('button', { name: 'canvas.generate' }));
+
+    await waitFor(() => {
+      expect(buildNodeGeneratePayload).toHaveBeenCalledWith(
+        expect.objectContaining({
+          action: undefined,
+          referenceImages: [],
         })
       );
     });
@@ -264,16 +284,14 @@ describe('ImageEditNode openai-image edit action', () => {
       prompt: '@图1 turn it into watercolor',
     });
 
-    const editButton = screen.getByRole('button', { name: 'node.imageEdit.edit' });
     const generateButton = screen.getByRole('button', { name: 'canvas.generate' });
 
-    await user.click(editButton);
+    await user.click(generateButton);
 
     await waitFor(() => {
       expect(canvasAiGateway.submitGenerateImageJob).toHaveBeenCalledTimes(1);
     });
 
-    expect(editButton).toBeDisabled();
     expect(generateButton).toBeDisabled();
 
     await user.click(generateButton);
