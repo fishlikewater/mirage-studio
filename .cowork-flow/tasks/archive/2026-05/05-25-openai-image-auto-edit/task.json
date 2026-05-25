@@ -1,0 +1,21 @@
+{
+  "id": "openai-image-auto-edit",
+  "name": "openai-image-auto-edit",
+  "title": "OpenAI image auto edit",
+  "description": "",
+  "status": "completed",
+  "dev_type": null,
+  "scope": null,
+  "priority": "P1",
+  "creator": "codex",
+  "assignee": "codex",
+  "createdAt": "2026-05-25",
+  "completedAt": "2026-05-25",
+  "commit": null,
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [],
+  "notes": "",
+  "meta": {}
+}

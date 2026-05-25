@@ -1,0 +1,11 @@
+{"file": "AGENTS.md", "reason": "Project collaboration rules and workflow gates"}
+{"file": ".cowork-flow/workflow.md", "reason": "Project workflow and conventions"}
+{"file": ".cowork-flow/spec/guides/index.md", "reason": "Pre-implementation thinking guides"}
+{"file": ".cowork-flow/spec/guides/pre-implementation-checklist.md", "reason": "Mandatory pre-coding checklist"}
+{"file": ".cowork-flow/spec/frontend/index.md", "reason": "Frontend development guide"}
+{"file": "src/features/canvas/nodes/ImageEditNode.tsx", "reason": "Image node generation action behavior"}
+{"file": ".cowork-flow/changes/05-25-openai-image-auto-edit/spec.md", "reason": "Approved behavior spec"}
+{"file": ".cowork-flow/changes/05-25-openai-image-auto-edit/proposal.md", "reason": "Approved proposal"}
+{"file": "src/features/canvas/nodes/ImageEditNode.test.tsx", "reason": "Image node regression tests"}
+{"file": "src/components/settings/CustomProvidersPage.test.tsx", "reason": "Custom provider page layout test"}
+{"file": "src/components/settings/CustomProvidersPage.tsx", "reason": "Custom provider page header layout"}
