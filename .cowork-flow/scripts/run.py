@@ -8,6 +8,12 @@ import subprocess
 import sys
 from pathlib import Path
 
+from common.execution_context import (
+    ExecutionContextError,
+    context_to_internal_cli_args,
+    parse_public_execution_context_args,
+)
+
 COMMAND_SCRIPTS = {
     "resume": "resume.py",
     "task": "task.py",
@@ -20,15 +26,19 @@ COMMAND_SCRIPTS = {
     "init_developer": "init_developer.py",
     "add-session": "add_session.py",
     "add_session": "add_session.py",
-    "agent-team": "agent_team.py",
-    "agent_team": "agent_team.py",
+    "subagent": "subagent.py",
+    "doctor": "doctor.py",
 }
+
+CONTEXT_AWARE_COMMANDS = {"resume", "task", "subagent"}
 
 
 def print_usage() -> None:
     print(
         """Usage:
   ./.cowork-flow/run <command> [args...]
+  ./.cowork-flow/run --context-file <assignment-context.json> <command> [args...]
+  ./.cowork-flow/run --mode worker --task-dir <task-dir> --assignment <id> <command> [args...]
   ./.cowork-flow/run python [python-args...]
 
 Common commands:
@@ -39,7 +49,8 @@ Common commands:
   get-developer
   init-developer
   add-session
-  agent-team
+  subagent
+  doctor
 """.rstrip()
     )
 
@@ -62,7 +73,16 @@ def run_script(script_name: str, args: list[str]) -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
-    args = list(sys.argv[1:] if argv is None else argv)
+    raw_args = list(sys.argv[1:] if argv is None else argv)
+    if not raw_args:
+        print_usage()
+        return 2
+
+    try:
+        context, args = parse_public_execution_context_args(raw_args)
+    except ExecutionContextError as error:
+        print(f"Error: {error}", file=sys.stderr)
+        return 2
     if not args:
         print_usage()
         return 2
@@ -73,6 +93,12 @@ def main(argv: list[str] | None = None) -> int:
         print_usage()
         return 0
     if command == "python":
+        if not context.is_default:
+            print(
+                "Error: execution context flags are not supported with the `python` passthrough command.",
+                file=sys.stderr,
+            )
+            return 2
         return run_python(rest)
 
     script_name = COMMAND_SCRIPTS.get(command)
@@ -85,8 +111,15 @@ def main(argv: list[str] | None = None) -> int:
             print_usage()
             return 2
 
-    return run_script(script_name, rest)
+    if not context.is_default and command not in CONTEXT_AWARE_COMMANDS:
+        print(
+            f"Error: execution context flags are only supported for: {', '.join(sorted(CONTEXT_AWARE_COMMANDS))}",
+            file=sys.stderr,
+        )
+        return 2
+
+    return run_script(script_name, [*context_to_internal_cli_args(context), *rest])
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    sys.exit(main())

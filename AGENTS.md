@@ -2,11 +2,19 @@
 
 请与项目自身规范合并使用；如有冲突，以项目规范和用户明确指令为准。
 
-## 0. 项目定制位
+## 项目定制位
 
-- 提交策略：`允许 AI 提交 `
-- 文档语言：默认 `中文`
+- 项目名称：`<按项目填写>`
+- 主要技术栈：`<按项目填写>`
+- 主要运行命令：`<按项目填写>`
+- 主要测试命令：`<按项目填写>`
+- 提交策略：`<由人类提交 / 允许 AI 提交 / 混合>`
+- 文档语言：默认 `中文`，如需英文请整体改口径
 ---
+
+## 0. 委托任务优先
+
+如果当前 prompt 是 subagent/worker/命令执行等有边界的委托任务，先执行委托 prompt；不要把 AGENTS.md、环境说明或 bootstrap 文本当成任务。除非委托 prompt 明确要求，否则不要运行 start/resume，不要再派发 agent。
 
 ## 1. 编码前先思考
 
@@ -69,7 +77,7 @@
 - 如果认为现有惯例有害，要明确说明，而不是私自分叉。
 
 ## 7. 暴露冲突
-
+   
 - 如果发现两种模式、约定或需求互相矛盾，不要折中混合。
 - 选择更近期、更稳定或测试覆盖更好的模式。
 - 简要说明选择原因。
@@ -80,6 +88,9 @@
 - 测试应表达行为背后的业务意图，而不只是覆盖表面输出。
 - 新增或修改测试时，确保它能在关键逻辑被破坏时失败。
 - 修 bug 时，优先补回归验证。
+- 能用测试表达的行为，优先先写能失败的测试，再实现最小修复。
+- 禁止为了满足流程而编写无意义的简单测试，例如只断言函数存在、mock 被调用、空快照或与实现同义的断言。
+- 复杂问题的测试应深度优先：优先覆盖业务不变量、跨层契约、状态流转、错误边界和真实回归路径，再补窄单元测试。
 - 不把“测试未运行”说成“测试通过”。
 
 ## 9. 阶段性检查
@@ -91,22 +102,5 @@
     - 如果跟丢上下文，先停下来重新整理。
 
 <!-- COWORK-FLOW:START -->
-# cowork-flow 强门禁
-
-若与项目自定义说明冲突，以项目说明和用户明确指令为准。
-
-Use the `.agent/skills/start` skill when starting a new session to:
-- Initialize your developer identity
-- Understand current project context
-- Enforce the task workflow gates before any implementation
-
-Use `@/.cowork-flow/` to learn:
-- Development workflow (`workflow.md`)
-- Project structure guidelines (`spec/`)
-- Developer workspace (`workspace/`)
-
-Use `@/.agent/skills/` for reusable local skills.
-
-Keep this managed block so cowork-flow updates can refresh the instructions.
-
+项目流程以 `.cowork-flow/workflow.md` 为准；项目规范从 `.cowork-flow/spec/` 读取。
 <!-- COWORK-FLOW:END -->

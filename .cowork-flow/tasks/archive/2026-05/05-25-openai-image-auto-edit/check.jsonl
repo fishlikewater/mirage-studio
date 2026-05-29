@@ -1,6 +1,0 @@
-{"file": ".agent/skills/finish-work/SKILL.md", "reason": "Finish work checklist"}
-{"file": ".agent/skills/record-session/SKILL.md", "reason": "Session recording and state sync"}
-{"file": ".agent/skills/check-cross-layer/SKILL.md", "reason": "Cross-layer consistency check"}
-{"file": ".cowork-flow/changes/05-25-openai-image-auto-edit/spec.md", "reason": "Check against behavior spec"}
-{"file": "src/components/settings/CustomProvidersPage.test.tsx", "reason": "Check settings page tests"}
-{"file": "src/features/canvas/nodes/ImageEditNode.test.tsx", "reason": "Check image node tests"}

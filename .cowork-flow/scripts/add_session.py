@@ -185,7 +185,7 @@ def generate_session_content(
 
 ### Follow-up Actions
 
-- None, current task is complete
+- None, active task is complete
 """
 
 
@@ -293,7 +293,7 @@ def _auto_commit_workspace(repo_root: Path) -> None:
     """Stage .cowork-flow/workspace and .cowork-flow/tasks, then commit with a configured message."""
     commit_msg = get_session_commit_message(repo_root)
     subprocess.run(
-        ["git", "add", "-A", ".cowork-flow/workspace", ".cowork-flow/tasks"],
+        ["git", "add", "-A", f"{DIR_WORKFLOW}/{DIR_WORKSPACE}", f"{DIR_WORKFLOW}/{DIR_TASKS}"],
         cwd=repo_root,
         capture_output=True,
     )

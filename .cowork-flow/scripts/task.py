@@ -9,8 +9,9 @@ Usage:
     ./.cowork-flow/run task add-context <dir> <file> <path> [reason] # Add jsonl entry
     ./.cowork-flow/run task validate <dir>              # Validate jsonl files
     ./.cowork-flow/run task list-context <dir>          # List jsonl entries
-    ./.cowork-flow/run task start <dir>                 # Set as current task
-    ./.cowork-flow/run task finish                      # Clear current task
+    ./.cowork-flow/run task start <dir>                 # Set active session task
+    ./.cowork-flow/run task current                     # Show active session task
+    ./.cowork-flow/run task finish                      # Clear active session task
     ./.cowork-flow/run task archive <task-name>         # Archive completed task
     ./.cowork-flow/run task list                        # List active tasks
     ./.cowork-flow/run task list-archive [month]        # List archived tasks
@@ -21,15 +22,6 @@ Usage:
 from __future__ import annotations
 
 import sys
-
-# IMPORTANT: Force stdout to use UTF-8 on Windows
-# This fixes UnicodeEncodeError when outputting non-ASCII characters
-if sys.platform == "win32":
-    import io as _io
-    if hasattr(sys.stdout, "reconfigure"):
-        sys.stdout.reconfigure(encoding="utf-8", errors="replace")  # type: ignore[union-attr]
-    elif hasattr(sys.stdout, "detach"):
-        sys.stdout = _io.TextIOWrapper(sys.stdout.detach(), encoding="utf-8", errors="replace")  # type: ignore[union-attr]
 
 import argparse
 import json
@@ -44,20 +36,22 @@ from common.files import (
     write_json_file as _write_json_file,
 )
 from common.git_context import _run_git_command
+from common.active_task import (
+    clear_active_task,
+    clear_task_from_sessions,
+    get_active_task,
+    set_active_task,
+)
 from common.paths import (
     DIR_WORKFLOW,
     DIR_AGENT,
     DIR_TASKS,
     DIR_SPEC,
     DIR_ARCHIVE,
-    FILE_CURRENT_TASK,
     FILE_TASK_JSON,
     get_repo_root,
     get_developer,
     get_tasks_dir,
-    get_current_task,
-    set_current_task,
-    clear_current_task,
     generate_task_date_prefix,
 )
 from common.task_utils import (
@@ -65,6 +59,11 @@ from common.task_utils import (
     archive_task_complete,
 )
 from common.config import get_hooks
+from common.execution_context import (
+    build_internal_execution_context_parser,
+    execution_context_from_namespace,
+    worker_command_block_message,
+)
 
 CONTEXT_JSONL_FILES = ["implement.jsonl", "check.jsonl", "debug.jsonl"]
 DONE_STATUSES = ("completed", "done")
@@ -88,30 +87,6 @@ def colored(text: str, color: str) -> str:
     return f"{color}{text}{Colors.NC}"
 
 
-def _get_current_task_file_path(repo_root: Path) -> Path:
-    """Build the absolute path to .current-task."""
-    return repo_root / DIR_WORKFLOW / FILE_CURRENT_TASK
-
-
-def _is_current_task_dir(current_task: str, dir_name: str) -> bool:
-    """Check whether the current-task pointer refers to this task directory."""
-    return Path(current_task).name == dir_name
-
-
-def _clear_current_task_or_report(repo_root: Path, current_task: str) -> bool:
-    """Clear .current-task and print a concrete error on failure."""
-    if clear_current_task(repo_root):
-        return True
-
-    current_file = _get_current_task_file_path(repo_root)
-    print(
-        colored(f"Error: Failed to clear current task file: {current_file}", Colors.RED),
-        file=sys.stderr,
-    )
-    print(f"Current task still points to: {current_task}", file=sys.stderr)
-    return False
-
-
 def _write_json_or_report(path: Path, data: dict, label: str) -> bool:
     """Write JSON data and print a concrete error on failure."""
     if _write_json_file(path, data):
@@ -122,23 +97,6 @@ def _write_json_or_report(path: Path, data: dict, label: str) -> bool:
         file=sys.stderr,
     )
     return False
-
-
-def _restore_current_task_or_report(repo_root: Path, current_task: str) -> bool:
-    """Restore .current-task after a failed archive attempt."""
-    current_file = _get_current_task_file_path(repo_root)
-
-    try:
-        current_file.parent.mkdir(parents=True, exist_ok=True)
-        current_file.write_text(current_task, encoding="utf-8")
-        return True
-    except OSError:
-        print(
-            colored(f"Error: Failed to restore current task file: {current_file}", Colors.RED),
-            file=sys.stderr,
-        )
-        print(f"Original current task was: {current_task}", file=sys.stderr)
-        return False
 
 
 def _build_archived_task_relationship_updates(
@@ -232,8 +190,6 @@ def _rollback_archived_task_or_report(
     task_dir: Path,
     archive_dest: Path,
     task_data: dict | None,
-    repo_root: Path,
-    current_task: str | None = None,
 ) -> None:
     """Try to restore the original task location and metadata after archive failure."""
     print(
@@ -260,10 +216,6 @@ def _rollback_archived_task_or_report(
 
     if task_data and task_dir.is_dir():
         _write_json_or_report(task_dir / FILE_TASK_JSON, task_data, "restored task metadata")
-
-    if current_task:
-        _restore_current_task_or_report(repo_root, current_task)
-
 
 def _finalize_archived_task_metadata(
     archive_dest: Path,
@@ -303,6 +255,7 @@ def _run_hooks(event: str, task_json_path: Path, repo_root: Path) -> None:
         repo_root: Repository root for cwd and config lookup.
     """
     import os
+    import shlex
     import subprocess
 
     commands = get_hooks(event, repo_root)
@@ -314,8 +267,7 @@ def _run_hooks(event: str, task_json_path: Path, repo_root: Path) -> None:
     for cmd in commands:
         try:
             result = subprocess.run(
-                cmd,
-                shell=True,
+                shlex.split(cmd),
                 cwd=repo_root,
                 env=env,
                 capture_output=True,
@@ -407,30 +359,21 @@ def _skill_path(name: str) -> str:
     return f"{DIR_AGENT}/skills/{name}/SKILL.md"
 
 
-def get_check_context(dev_type: str, repo_root: Path) -> list[dict]:
+def get_check_context(dev_type: str) -> list[dict]:
     """Get check context entries."""
-    entries = [
-        {"file": _skill_path("finish-work"), "reason": "Finish work checklist"},
-        {"file": _skill_path("record-session"), "reason": "Session recording and state sync"},
+    return [
+        {"file": _skill_path("check"), "reason": "Quality, contract, and template consistency check"},
+        {"file": _skill_path("finish-work"), "reason": "Finish, archive, and session recording gate"},
     ]
 
-    if dev_type in ("backend", "frontend", "fullstack"):
-        entries.append({"file": _skill_path("check-cross-layer"), "reason": "Cross-layer consistency check"})
 
-    return entries
-
-
-def get_debug_context(dev_type: str, repo_root: Path) -> list[dict]:
+def get_debug_context(dev_type: str) -> list[dict]:
     """Get debug context entries."""
-    entries: list[dict] = [
+    return [
         {"file": _skill_path("break-loop"), "reason": "Deep bug analysis workflow"},
         {"file": _skill_path("update-spec"), "reason": "Capture implementation lessons and contracts"},
+        {"file": _skill_path("check"), "reason": "Verify the fix and related contracts"},
     ]
-
-    if dev_type in ("backend", "frontend", "fullstack"):
-        entries.append({"file": _skill_path("check-cross-layer"), "reason": "Cross-layer consistency check"})
-
-    return entries
 
 
 def _write_jsonl(path: Path, entries: list[dict]) -> None:
@@ -683,14 +626,14 @@ def cmd_init_context(args: argparse.Namespace) -> int:
 
     # check.jsonl
     print(colored("Creating check.jsonl...", Colors.CYAN))
-    check_entries = get_check_context(dev_type, repo_root)
+    check_entries = get_check_context(dev_type)
     check_file = target_dir / "check.jsonl"
     _write_jsonl(check_file, check_entries)
     print(f"  {colored('[OK]', Colors.GREEN)} {len(check_entries)} entries")
 
     # debug.jsonl
     print(colored("Creating debug.jsonl...", Colors.CYAN))
-    debug_entries = get_debug_context(dev_type, repo_root)
+    debug_entries = get_debug_context(dev_type)
     debug_file = target_dir / "debug.jsonl"
     _write_jsonl(debug_file, debug_entries)
     print(f"  {colored('[OK]', Colors.GREEN)} {len(debug_entries)} entries")
@@ -801,9 +744,11 @@ def _validate_jsonl(jsonl_file: Path, repo_root: Path) -> int:
         return 0
 
     line_num = 0
+    entry_count = 0
     for line_num, line in _iter_jsonl_lines(jsonl_file):
         if not line.strip():
             continue
+        entry_count += 1
 
         try:
             data = json.loads(line)
@@ -831,7 +776,7 @@ def _validate_jsonl(jsonl_file: Path, repo_root: Path) -> int:
                 errors += 1
 
     if errors == 0:
-        print(f"  {colored(f'{file_name}: [OK] ({line_num} entries)', Colors.GREEN)}")
+        print(f"  {colored(f'{file_name}: [OK] ({entry_count} entries)', Colors.GREEN)}")
     else:
         print(f"  {colored(f'{file_name}: [FAIL] ({errors} errors)', Colors.RED)}")
 
@@ -892,7 +837,7 @@ def cmd_list_context(args: argparse.Namespace) -> int:
 # =============================================================================
 
 def cmd_start(args: argparse.Namespace) -> int:
-    """Set current task."""
+    """Set active task for this session."""
     repo_root = get_repo_root()
     task_input = args.dir
 
@@ -936,38 +881,64 @@ def cmd_start(args: argparse.Namespace) -> int:
     except ValueError:
         task_dir = str(full_path)
 
-    if set_current_task(task_dir, repo_root):
-        print(colored(f"[OK] Current task set to: {task_dir}", Colors.GREEN))
-        print()
-        print(colored("The hook will now inject context from this task's jsonl files.", Colors.BLUE))
-
-        task_json_path = full_path / FILE_TASK_JSON
-        _run_hooks("after_start", task_json_path, repo_root)
-        return 0
-    else:
-        print(colored("Error: Failed to set current task", Colors.RED))
+    active = set_active_task(repo_root, task_dir)
+    if active is None:
+        print(
+            colored(
+                "Error: Missing session context. Set COWORK_FLOW_CONTEXT_ID or run inside Codex session.",
+                Colors.RED,
+            ),
+            file=sys.stderr,
+        )
         return 1
+
+    print(colored(f"[OK] Active session task set to: {task_dir}", Colors.GREEN))
+    print()
+    print(colored("Fixed agents will load context from this task's jsonl files.", Colors.BLUE))
+
+    task_json_path = full_path / FILE_TASK_JSON
+    _run_hooks("after_start", task_json_path, repo_root)
+    return 0
 
 
 def cmd_finish(args: argparse.Namespace) -> int:
-    """Clear current task."""
+    """Clear active task for this session."""
     repo_root = get_repo_root()
-    current = get_current_task(repo_root)
+    active = get_active_task(repo_root)
 
-    if not current:
-        print(colored("No current task set", Colors.YELLOW))
+    if not active.task_path:
+        print(colored("No active task set for this session", Colors.YELLOW))
         return 0
 
     # Resolve task.json path before clearing
-    task_json_path = repo_root / current / FILE_TASK_JSON
+    task_json_path = repo_root / active.task_path / FILE_TASK_JSON
+    clear_active_task(repo_root)
 
-    if not _clear_current_task_or_report(repo_root, current):
-        return 1
-
-    print(colored(f"[OK] Cleared current task (was: {current})", Colors.GREEN))
+    print(colored(f"[OK] Cleared active session task (was: {active.task_path})", Colors.GREEN))
 
     if task_json_path.is_file():
         _run_hooks("after_finish", task_json_path, repo_root)
+    return 0
+
+
+def cmd_current(args: argparse.Namespace) -> int:
+    """Show active session task."""
+    repo_root = get_repo_root()
+    active = get_active_task(repo_root)
+    if not active.context_key:
+        print(
+            colored(
+                "Error: Missing session context. Set COWORK_FLOW_CONTEXT_ID or run inside Codex session.",
+                Colors.RED,
+            ),
+            file=sys.stderr,
+        )
+        return 1
+    if not active.task_path:
+        print("Active task: (none)")
+        return 0
+    print(f"Active task: {active.task_path}")
+    print(f"Source: {active.source}:{active.context_key}")
     return 0
 
 
@@ -1003,19 +974,9 @@ def cmd_archive(args: argparse.Namespace) -> int:
     if task_json_path.is_file():
         task_data = _read_json_file(task_json_path)
 
-    # Clear if current task
-    cleared_current_task: str | None = None
-    current = get_current_task(repo_root)
-    if current and _is_current_task_dir(current, dir_name):
-        if not _clear_current_task_or_report(repo_root, current):
-            return 1
-        cleared_current_task = current
-
     # Archive
     result = archive_task_complete(task_dir, repo_root)
     if "archived_to" not in result:
-        if cleared_current_task:
-            _restore_current_task_or_report(repo_root, cleared_current_task)
         return 1
 
     archive_dest = Path(result["archived_to"])
@@ -1030,28 +991,25 @@ def cmd_archive(args: argparse.Namespace) -> int:
             task_dir,
             archive_dest,
             task_data,
-            repo_root,
-            current_task=cleared_current_task,
         )
         return 1
 
-    if "archived_to" in result:
-        archived_json = archive_dest / FILE_TASK_JSON
-        year_month = archive_dest.parent.name
-        print(colored(f"Archived: {dir_name} -> archive/{year_month}/", Colors.GREEN), file=sys.stderr)
+    clear_task_from_sessions(repo_root, f"{DIR_WORKFLOW}/{DIR_TASKS}/{dir_name}")
 
-        # Auto-commit unless --no-commit
-        if not getattr(args, "no_commit", False):
-            _auto_commit_archive(dir_name, repo_root)
+    archived_json = archive_dest / FILE_TASK_JSON
+    year_month = archive_dest.parent.name
+    print(colored(f"Archived: {dir_name} -> archive/{year_month}/", Colors.GREEN), file=sys.stderr)
 
-        # Return the archive path
-        print(f"{DIR_WORKFLOW}/{DIR_TASKS}/{DIR_ARCHIVE}/{year_month}/{dir_name}")
+    # Auto-commit unless --no-commit
+    if not getattr(args, "no_commit", False):
+        _auto_commit_archive(dir_name, repo_root)
 
-        # Run hooks with the archived path
-        _run_hooks("after_archive", archived_json, repo_root)
-        return 0
+    # Return the archive path
+    print(f"{DIR_WORKFLOW}/{DIR_TASKS}/{DIR_ARCHIVE}/{year_month}/{dir_name}")
 
-    return 1
+    # Run hooks with the archived path
+    _run_hooks("after_archive", archived_json, repo_root)
+    return 0
 
 
 def _auto_commit_archive(task_name: str, repo_root: Path) -> None:
@@ -1196,7 +1154,7 @@ def cmd_list(args: argparse.Namespace) -> int:
     """List active tasks."""
     repo_root = get_repo_root()
     tasks_dir = get_tasks_dir(repo_root)
-    current_task = get_current_task(repo_root)
+    active_task = get_active_task(repo_root).task_path
     developer = get_developer(repo_root)
     filter_mine = args.mine
     filter_status = args.status
@@ -1232,8 +1190,8 @@ def cmd_list(args: argparse.Namespace) -> int:
 
         relative_path = f"{DIR_WORKFLOW}/{DIR_TASKS}/{dir_name}"
         marker = ""
-        if relative_path == current_task:
-            marker = f" {colored('<- current', Colors.GREEN)}"
+        if relative_path == active_task:
+            marker = f" {colored('<- active', Colors.GREEN)}"
 
         # Children progress
         progress = _get_children_progress(children, all_tasks) if children else ""
@@ -1317,8 +1275,8 @@ Usage:
   ./.cowork-flow/run task add-context <dir> <jsonl> <path> [reason]  Add entry to jsonl
   ./.cowork-flow/run task validate <dir>                     Validate jsonl files
   ./.cowork-flow/run task list-context <dir>                 List jsonl entries
-  ./.cowork-flow/run task start <dir>                        Set as current task
-  ./.cowork-flow/run task finish                             Clear current task
+  ./.cowork-flow/run task start <dir>                        Set active session task
+  ./.cowork-flow/run task finish                             Clear active session task
   ./.cowork-flow/run task archive <task-name>                Archive completed task
   ./.cowork-flow/run task add-subtask <parent> <child>       Link child task to parent
   ./.cowork-flow/run task remove-subtask <parent> <child>    Unlink child from parent
@@ -1357,6 +1315,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(
         description="Task Management Script for cowork-flow workflow",
         formatter_class=argparse.RawDescriptionHelpFormatter,
+        parents=[build_internal_execution_context_parser()],
     )
     subparsers = parser.add_subparsers(dest="command", help="Commands")
 
@@ -1390,11 +1349,14 @@ def main() -> int:
     p_listctx.add_argument("dir", help="Task directory")
 
     # start
-    p_start = subparsers.add_parser("start", help="Set current task")
+    p_start = subparsers.add_parser("start", help="Set active session task")
     p_start.add_argument("dir", help="Task directory")
 
+    # current
+    subparsers.add_parser("current", help="Show active session task")
+
     # finish
-    subparsers.add_parser("finish", help="Clear current task")
+    subparsers.add_parser("finish", help="Clear active session task")
 
     # archive
     p_archive = subparsers.add_parser("archive", help="Archive task")
@@ -1421,10 +1383,32 @@ def main() -> int:
     p_listarch.add_argument("month", nargs="?", help="Month (YYYY-MM)")
 
     args = parser.parse_args()
+    execution_context = execution_context_from_namespace(args)
 
     if not args.command:
         show_usage()
         return 1
+
+    worker_blocked_commands = {
+        "create",
+        "init-context",
+        "add-context",
+        "start",
+        "finish",
+        "archive",
+        "add-subtask",
+        "remove-subtask",
+    }
+    if execution_context.is_worker and args.command in worker_blocked_commands:
+        print(
+            worker_command_block_message(
+                execution_context,
+                f"task {args.command}",
+                "Workers must not activate, archive, or mutate cowork-flow task state.",
+            ),
+            file=sys.stderr,
+        )
+        return 2
 
     commands = {
         "create": cmd_create,
@@ -1433,6 +1417,7 @@ def main() -> int:
         "validate": cmd_validate,
         "list-context": cmd_list_context,
         "start": cmd_start,
+        "current": cmd_current,
         "finish": cmd_finish,
         "archive": cmd_archive,
         "add-subtask": cmd_add_subtask,

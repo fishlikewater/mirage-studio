@@ -1,6 +1,0 @@
-{"file": ".agent/skills/finish-work/SKILL.md", "reason": "Finish work checklist"}
-{"file": ".agent/skills/record-session/SKILL.md", "reason": "Session recording and state sync"}
-{"file": ".agent/skills/check-cross-layer/SKILL.md", "reason": "Cross-layer consistency check"}
-{"file": ".cowork-flow/changes/canvas-interaction-feedback/specs/canvas-interaction-feedback/spec.md", "reason": "Check against approved behavior spec"}
-{"file": ".cowork-flow/plans/2026-05-21-canvas-interaction-feedback.md", "reason": "Check implementation progress"}
-{"file": "src/features/canvas/nodes/ImageEditNode.test.tsx", "reason": "Regression test evidence"}
