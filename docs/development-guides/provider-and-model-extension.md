@@ -1,18 +1,18 @@
 # 供应商与模型扩展指南
 
-本文档用于指导在 Storyboard Copilot 中新增 AI 供应商或新增模型。
+本文档用于指导在 mirage-studio 中新增 AI 供应商或新增模型。
 
 ## 1. 适用范围
 
 - 前端模型注册：`src/features/canvas/models/**`
-- 前端密钥配置：`src/stores/settingsStore.ts`、`src/components/SettingsDialog.tsx`
+- 前端供应商配置：`src/stores/customProviderConfig.ts`、`src/components/settings/CustomProvidersPage.tsx`
 - Tauri AI 命令与供应商：`src-tauri/src/commands/ai.rs`、`src-tauri/src/ai/**`
 
 ## 2. 扩展原则
 
 - 前端：模型与供应商通过文件自动发现（`import.meta.glob`）。
-- 后端：供应商通过 `build_default_providers()` 注册；模型通过 provider 内部注册机制发现。
-- 节点生成流程按 `selectedModel.providerId` 自动选择 API Key 与 provider。
+- 后端：保留内置 provider 兼容实现；新接入优先通过设置页供应商配置进入运行时。
+- 节点生成流程按 `runtimeProvider` 使用供应商配置，不再从内置 API Key 配置中取值。
 
 ## 3. 新增模型（已有供应商）
 
@@ -132,7 +132,7 @@ export const provider: ModelProviderDefinition = {
 };
 ```
 
-前端设置页会自动出现该供应商 API Key 输入项。
+前端设置页不再为内置供应商自动生成密钥输入项。请在“设置 > 供应商”中添加供应商和模型。
 
 ## 4.2 前端新增该供应商的模型（每模型 1 文件）
 
@@ -160,7 +160,6 @@ export const provider: ModelProviderDefinition = {
 - `name()`
 - `supports_model()`
 - `list_models()`
-- `set_api_key()`
 - `generate()`
 
 ## 4.4 注册供应商到系统
@@ -224,7 +223,7 @@ npm run build
 
 2. 前端可选模型但生成失败
 - 检查模型 `resolveRequest().requestModel` 是否与后端 `model_aliases()` 匹配。
-- 检查对应供应商 API Key 是否已在设置页填写。
+- 检查对应供应商是否已在“设置 > 供应商”中完整配置。
 
 3. 后端 `list_models` 没有新模型
 - 检查模型文件是否放在正确目录。

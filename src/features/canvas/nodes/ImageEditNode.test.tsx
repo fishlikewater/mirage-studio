@@ -10,7 +10,7 @@ import { getRuntimeDiagnostics } from '@/features/canvas/application/generationE
 import { resolveGenerationContext } from '@/features/canvas/application/runtimeGenerationContext';
 import type { ImageEditNodeData } from '@/features/canvas/domain/canvasNodes';
 import { useCanvasStore } from '@/stores/canvasStore';
-import { DEFAULT_GRSAI_NANO_BANANA_PRO_MODEL, useSettingsStore } from '@/stores/settingsStore';
+import { useSettingsStore } from '@/stores/settingsStore';
 
 import { ImageEditNode } from './ImageEditNode';
 
@@ -54,7 +54,6 @@ vi.mock('@/features/canvas/ui/NodeResizeHandle', () => ({
 
 vi.mock('@/features/canvas/application/canvasServices', () => ({
   canvasAiGateway: {
-    setApiKey: vi.fn(),
     submitGenerateImageJob: vi.fn(),
   },
   graphImageResolver: {
@@ -108,10 +107,7 @@ vi.mock('@/features/canvas/application/referenceTokenEditing', () => ({
 vi.mock('@/features/canvas/application/runtimeGenerationContext', () => ({
   resolveGenerationContext: vi.fn(() => ({
     isConfigured: true,
-    shouldSetApiKey: false,
-    apiKey: '',
     providerRuntime: undefined,
-    resumeProviderId: 'mock-provider',
   })),
 }));
 
@@ -156,10 +152,8 @@ describe('ImageEditNode openai-image edit action', () => {
       useSettingsStore.setState(
         {
           ...initialSettingsState,
-          apiKeys: {},
           customProviders: [],
           promptTemplates: [],
-          grsaiNanoBananaProModel: DEFAULT_GRSAI_NANO_BANANA_PRO_MODEL,
           showNodePrice: false,
         },
         true
@@ -184,8 +178,6 @@ describe('ImageEditNode openai-image edit action', () => {
     vi.mocked(graphImageResolver.collectInputImages).mockReturnValue([]);
     vi.mocked(resolveGenerationContext).mockReturnValue({
       isConfigured: true,
-      shouldSetApiKey: false,
-      apiKey: '',
       providerRuntime: {
         kind: 'custom-provider',
         protocol: 'openai-image',
@@ -193,7 +185,6 @@ describe('ImageEditNode openai-image edit action', () => {
         apiKey: 'sk-openai',
         remoteModelId: 'gpt-image-1',
       },
-      resumeProviderId: 'openai-images',
     });
     vi.mocked(buildNodeGeneratePayload).mockReturnValue({
       prompt: 'mock prompt',
@@ -407,10 +398,8 @@ describe('ImageEditNode', () => {
       useSettingsStore.setState(
         {
           ...initialSettingsState,
-          apiKeys: {},
           customProviders: [],
           promptTemplates: [],
-          grsaiNanoBananaProModel: DEFAULT_GRSAI_NANO_BANANA_PRO_MODEL,
           showNodePrice: false,
         },
         true
@@ -435,10 +424,7 @@ describe('ImageEditNode', () => {
     vi.mocked(graphImageResolver.collectInputImages).mockReturnValue([]);
     vi.mocked(resolveGenerationContext).mockReturnValue({
       isConfigured: true,
-      shouldSetApiKey: false,
-      apiKey: '',
       providerRuntime: undefined,
-      resumeProviderId: 'mock-provider',
     });
     vi.mocked(buildNodeGeneratePayload).mockReturnValue({
       prompt: 'mock prompt',

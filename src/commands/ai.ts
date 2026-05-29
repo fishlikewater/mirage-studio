@@ -126,18 +126,6 @@ function createErrorWithDetails(message: string, details?: string): ErrorWithDet
   return error;
 }
 
-export async function setApiKey(provider: string, apiKey: string): Promise<void> {
-  console.info('[AI] set_api_key', {
-    provider,
-    apiKeyMasked: apiKey ? `${apiKey.slice(0, 4)}***${apiKey.slice(-2)}` : '',
-    tauri: isTauri(),
-  });
-  if (!isTauri()) {
-    throw new Error('当前不是 Tauri 容器环境，请使用 `npm run tauri dev` 启动');
-  }
-  return await invoke('set_api_key', { provider, apiKey });
-}
-
 export async function generateImage(request: GenerateRequest): Promise<string> {
   const startedAt = performance.now();
   console.info('[AI] generate_image request', {

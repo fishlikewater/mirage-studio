@@ -25,7 +25,7 @@ vi.mock('@/components/ui/useDialogTransition', () => ({
 }));
 
 vi.mock('@tauri-apps/api/app', () => ({
-  getVersion: vi.fn().mockResolvedValue('0.0.0-test'),
+  getVersion: vi.fn(() => new Promise<string>(() => {})),
 }));
 
 vi.mock('@tauri-apps/plugin-dialog', () => ({
@@ -36,68 +36,23 @@ vi.mock('@tauri-apps/plugin-opener', () => ({
   openUrl: vi.fn(),
 }));
 
-vi.mock('@/features/canvas/models', () => ({
-  listModelProviders: vi.fn(() => [
-    { id: 'kie', name: 'Kie', label: '可灵' },
-    { id: 'grsai', name: 'GRSAI', label: 'GRSAI' },
-  ]),
-}));
-
-vi.mock('@/components/settings/BuiltinProviderSettingsSection', () => ({
-  BuiltinProviderSettingsSection: () => (
-    <div data-testid="builtin-provider-settings">builtin-provider-settings</div>
-  ),
-}));
-
 describe('SettingsDialog', () => {
   beforeEach(() => {
     useSettingsStore.setState({
-      hideProviderGuidePopover: true,
       customProviders: [],
-      apiKeys: {},
     });
   });
 
-  it('renders providers and suppliers categories, and switches content area', async () => {
-    const user = userEvent.setup();
+  it('renders suppliers as the only provider configuration category', () => {
+    render(<SettingsDialog isOpen onClose={vi.fn()} initialCategory="suppliers" />);
 
-    render(<SettingsDialog isOpen onClose={vi.fn()} initialCategory="providers" />);
-
-    expect(screen.getByRole('button', { name: 'settings.providers' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'settings.suppliers' })).toBeInTheDocument();
-    expect(screen.getByTestId('builtin-provider-settings')).toBeInTheDocument();
-
-    await user.click(screen.getByRole('button', { name: 'settings.suppliers' }));
-
-    expect(await screen.findByRole('button', { name: 'settings.addSupplier' })).toBeInTheDocument();
-  });
-
-  it('keeps builtin provider save available even when custom provider drafts are invalid', async () => {
-    useSettingsStore.setState({
-      hideProviderGuidePopover: true,
-      apiKeys: {},
-      customProviders: [
-        {
-          id: 'draft-provider',
-          name: '',
-          protocol: 'openapi',
-          baseUrl: '',
-          apiKey: '',
-          models: [],
-        },
-      ],
-    });
-
-    render(<SettingsDialog isOpen onClose={vi.fn()} initialCategory="providers" />);
-
-    expect(await screen.findByRole('button', { name: 'common.save' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'settings.addSupplier' })).toBeInTheDocument();
   });
 
   it('adds a supplier from the suppliers page and refreshes the list immediately', async () => {
     const user = userEvent.setup();
     useSettingsStore.setState({
-      hideProviderGuidePopover: true,
-      apiKeys: {},
       customProviders: [],
     });
 
@@ -124,8 +79,6 @@ describe('SettingsDialog', () => {
   it('edits an existing supplier from the suppliers page and refreshes the summary immediately', async () => {
     const user = userEvent.setup();
     useSettingsStore.setState({
-      hideProviderGuidePopover: true,
-      apiKeys: {},
       customProviders: [
         {
           id: 'gateway-a',
@@ -160,8 +113,6 @@ describe('SettingsDialog', () => {
   it('deletes an existing supplier only after confirmation and refreshes the list', async () => {
     const user = userEvent.setup();
     useSettingsStore.setState({
-      hideProviderGuidePopover: true,
-      apiKeys: {},
       customProviders: [
         {
           id: 'gateway-a',

@@ -1,13 +1,13 @@
 <div align="center">
-  <img src="./src-tauri/icons/128x128@2x.png" width="100" height="100" alt="Storyboard Copilot" style="margin-bottom: -50px;">
-  <h1 style="color: ##111227;">分镜助手</h1>
+  <img src="./src-tauri/icons/128x128@2x.png" width="100" height="100" alt="天工" style="margin-bottom: -50px;">
+  <h1 style="color: ##111227;">天工</h1>
   <h3>基于节点画布的 AI 分镜工作台，一站式完成图片生成、编辑与分镜流程</h3>
 
   [![Bilibili](https://img.shields.io/badge/bilibili-痕继痕迹-00AEEC?logo=bilibili)](https://space.bilibili.com/39337803)
 </div>
 
 <div align="center">
-  <img src="./docs/imgs/readme/storyboard-copilot-homepage.webp" alt="Storyboard Copilot 首页截图" width="820" />
+  <img src="./docs/imgs/readme/mirage-studio-homepage.webp" alt="天工首页截图" width="820" />
 </div>
 
 ## 下载
@@ -18,7 +18,7 @@ Windows 用户请下载 <strong>.exe</strong> 文件，macOS 用户请下载 <st
 Windows 用户如果在启动时遇到了报错，请尝试安装 [WebView2 运行时](https://developer.microsoft.com/zh-cn/Microsoft-edge/webview2#download)
 
 ### Github 下载
-[![Download Latest Release](https://img.shields.io/github/v/release/henjicc/Storyboard-Copilot?style=for-the-badge&color=blue)](https://github.com/henjicc/Storyboard-Copilot/releases/latest)
+[![Download Latest Release](https://img.shields.io/github/v/release/fishlikewater/mirage-studio?style=for-the-badge&color=blue)](https://github.com/fishlikewater/mirage-studio/releases/latest)
 
 ### 网盘下载
 **夸克网盘**：[https://pan.quark.cn/s/5b6733a8fc8e](https://pan.quark.cn/s/5b6733a8fc8e)

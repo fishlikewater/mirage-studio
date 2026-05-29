@@ -56,7 +56,6 @@ import {
   resolveImageModelResolution,
   resolveImageModelResolutions,
 } from '@/features/canvas/models';
-import { GRSAI_NANO_BANANA_PRO_MODEL_ID } from '@/features/canvas/models/image/grsai/nanoBananaPro';
 import { FAL_NANO_BANANA_2_MODEL_ID } from '@/features/canvas/models/image/fal/nanoBanana2';
 import { KIE_NANO_BANANA_2_MODEL_ID } from '@/features/canvas/models/image/kie/nanoBanana2';
 import { resolveModelPriceDisplay } from '@/features/canvas/pricing';
@@ -251,10 +250,8 @@ export const ImageEditNode = memo(({ id, data, selected, width, height }: ImageE
   const addNode = useCanvasStore((state) => state.addNode);
   const findNodePosition = useCanvasStore((state) => state.findNodePosition);
   const addEdge = useCanvasStore((state) => state.addEdge);
-  const apiKeys = useSettingsStore((state) => state.apiKeys);
   const customProviders = useSettingsStore((state) => state.customProviders);
   const promptTemplates = useSettingsStore((state) => state.promptTemplates);
-  const grsaiNanoBananaProModel = useSettingsStore((state) => state.grsaiNanoBananaProModel);
   const showNodePrice = useSettingsStore((state) => state.showNodePrice);
   const priceDisplayCurrencyMode = useSettingsStore((state) => state.priceDisplayCurrencyMode);
   const usdToCnyRate = useSettingsStore((state) => state.usdToCnyRate);
@@ -294,18 +291,13 @@ export const ImageEditNode = memo(({ id, data, selected, width, height }: ImageE
     return getRuntimeImageModel(modelId, customProviders);
   }, [customProviders, data.model]);
   const generationContext = useMemo(
-    () => resolveGenerationContext(selectedModel, apiKeys),
-    [apiKeys, selectedModel]
+    () => resolveGenerationContext(selectedModel),
+    [selectedModel]
   );
   const isOpenAiImageProtocol = generationContext.providerRuntime?.protocol === 'openai-image';
   const effectiveExtraParams = useMemo(
-    () => ({
-      ...(data.extraParams ?? {}),
-      ...(selectedModel.id === GRSAI_NANO_BANANA_PRO_MODEL_ID
-        ? { grsai_pro_model: grsaiNanoBananaProModel }
-        : {}),
-    }),
-    [data.extraParams, grsaiNanoBananaProModel, selectedModel.id]
+    () => data.extraParams ?? {},
+    [data.extraParams]
   );
   const resolutionOptions = useMemo(
     () => resolveImageModelResolutions(selectedModel, { extraParams: effectiveExtraParams }),
@@ -522,10 +514,6 @@ export const ImageEditNode = memo(({ id, data, selected, width, height }: ImageE
       addEdge(id, newNodeId);
 
       try {
-        if (generationContext.shouldSetApiKey) {
-          await canvasAiGateway.setApiKey(selectedModel.providerId, generationContext.apiKey);
-        }
-
         let resolvedRequestAspectRatio = selectedAspectRatio.value;
         if (resolvedRequestAspectRatio === AUTO_REQUEST_ASPECT_RATIO) {
           if (incomingImages.length > 0) {
@@ -576,7 +564,7 @@ export const ImageEditNode = memo(({ id, data, selected, width, height }: ImageE
         updateNodeData(newNodeId, {
           generationJobId: jobId,
           generationSourceType: 'imageEdit',
-          generationProviderId: generationContext.resumeProviderId,
+          generationProviderId: null,
           generationClientSessionId: CURRENT_RUNTIME_SESSION_ID,
           generationDebugContext,
         });

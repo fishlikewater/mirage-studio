@@ -4,7 +4,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { RuntimeImageModelDefinition } from '@/features/canvas/models';
 import { openSettingsDialog } from '@/features/settings/settingsEvents';
-import { useSettingsStore } from '@/stores/settingsStore';
 
 import { ModelParamsControls } from './ModelParamsControls';
 
@@ -58,19 +57,11 @@ describe('ModelParamsControls', () => {
       return 1;
     });
     vi.stubGlobal('cancelAnimationFrame', vi.fn());
-    useSettingsStore.setState({
-      apiKeys: {
-        kie: 'kie-token',
-      },
-    });
     vi.mocked(openSettingsDialog).mockReset();
   });
 
   afterEach(() => {
     vi.unstubAllGlobals();
-    useSettingsStore.setState({
-      apiKeys: {},
-    });
   });
 
   it('switches to the first model of the selected configured provider', async () => {
@@ -161,11 +152,8 @@ describe('ModelParamsControls', () => {
     expect(screen.getByText('modelParams.aspectRatio')).toBeInTheDocument();
   });
 
-  it('opens providers settings for missing builtin provider credentials', async () => {
+  it('opens suppliers settings for any missing provider credentials', async () => {
     const user = userEvent.setup();
-    useSettingsStore.setState({
-      apiKeys: {},
-    });
 
     const builtInModel = createRuntimeModel({});
 
@@ -194,7 +182,7 @@ describe('ModelParamsControls', () => {
       await user.click(screen.getByRole('button', { name: 'modelParams.goConfigure' }));
     });
 
-    expect(openSettingsDialog).toHaveBeenCalledWith({ category: 'providers' });
+    expect(openSettingsDialog).toHaveBeenCalledWith({ category: 'suppliers' });
   });
 
   it('opens suppliers settings for missing custom provider credentials', async () => {

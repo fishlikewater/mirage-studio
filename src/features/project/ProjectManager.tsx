@@ -6,7 +6,6 @@ import { getConfiguredProviderCount, useSettingsStore } from '@/stores/settingsS
 import { UI_CONTENT_OVERLAY_INSET_CLASS } from '@/components/ui/motion';
 import { UiButton, UiSelect } from '@/components/ui/primitives';
 import { MissingApiKeyHint } from '@/features/settings/MissingApiKeyHint';
-import { listModelProviders } from '@/features/canvas/models';
 import { RenameDialog } from './RenameDialog';
 
 type ProjectSortField = 'name' | 'createdAt' | 'updatedAt';
@@ -19,9 +18,8 @@ export function ProjectManager() {
   const [editingProjectName, setEditingProjectName] = useState('');
   const [sortField, setSortField] = useState<ProjectSortField>('createdAt');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
-  const providerIds = useMemo(() => listModelProviders().map((provider) => provider.id), []);
-  const configuredApiKeyCount = useSettingsStore((state) =>
-    getConfiguredProviderCount(state.apiKeys, state.customProviders, providerIds)
+  const configuredProviderCount = useSettingsStore((state) =>
+    getConfiguredProviderCount(state.customProviders)
   );
 
   const { projects, isOpeningProject, createProject, deleteProject, renameProject, openProject } =
@@ -108,7 +106,7 @@ export function ProjectManager() {
           </UiButton>
         </div>
 
-        {configuredApiKeyCount === 0 && <MissingApiKeyHint className="mb-8" />}
+        {configuredProviderCount === 0 && <MissingApiKeyHint className="mb-8" />}
 
         {projects.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-text-muted">

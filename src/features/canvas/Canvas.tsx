@@ -47,7 +47,6 @@ import {
   nodeHasTargetHandle,
 } from '@/features/canvas/domain/nodeRegistry';
 import { embedStoryboardImageMetadata } from '@/commands/image';
-import { listModelProviders } from '@/features/canvas/models';
 import { nodeTypes } from './nodes';
 import { edgeTypes } from './edges';
 import { NodeSelectionMenu } from './NodeSelectionMenu';
@@ -298,10 +297,8 @@ export function Canvas() {
   const imageViewer = useCanvasStore((state) => state.imageViewer);
   const closeImageViewer = useCanvasStore((state) => state.closeImageViewer);
   const navigateImageViewer = useCanvasStore((state) => state.navigateImageViewer);
-  const apiKeys = useSettingsStore((state) => state.apiKeys);
-  const providerIds = useMemo(() => listModelProviders().map((provider) => provider.id), []);
-  const configuredApiKeyCount = useSettingsStore((state) =>
-    getConfiguredProviderCount(state.apiKeys, state.customProviders, providerIds)
+  const configuredProviderCount = useSettingsStore((state) =>
+    getConfiguredProviderCount(state.customProviders)
   );
 
   const getCurrentProject = useProjectStore((state) => state.getCurrentProject);
@@ -437,22 +434,6 @@ export function Canvas() {
               break;
             }
 
-            const generationProviderId = typeof currentData.generationProviderId === 'string'
-              ? currentData.generationProviderId
-              : '';
-            if (generationProviderId) {
-              const providerApiKey = apiKeys[generationProviderId] ?? '';
-              if (providerApiKey) {
-                await canvasAiGateway.setApiKey(generationProviderId, providerApiKey).catch((error) => {
-                  console.warn('[GenerationJob] set_api_key failed before poll', {
-                    nodeId: pendingNode.id,
-                    generationProviderId,
-                    error,
-                  });
-                });
-              }
-            }
-
             const status = await canvasAiGateway.getGenerateImageJob(jobId).catch((error) => {
               console.warn('[GenerationJob] poll failed', { nodeId: pendingNode.id, jobId, error });
               return null;
@@ -541,7 +522,7 @@ export function Canvas() {
         }
       })();
     }
-  }, [apiKeys, nodes, updateNodeData]);
+  }, [nodes, updateNodeData]);
 
   useEffect(() => {
     const element = wrapperRef.current;
@@ -1571,7 +1552,7 @@ export function Canvas() {
     () => (
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
         <div className="flex max-w-3xl flex-col items-center gap-5 px-6 text-center">
-          {configuredApiKeyCount === 0 && <MissingApiKeyHint />}
+          {configuredProviderCount === 0 && <MissingApiKeyHint />}
           <div>
             <div className="mb-2 text-2xl text-text-muted">{t('canvas.emptyHintTitle')}</div>
             <div className="text-sm text-text-muted opacity-60">{t('canvas.emptyHintSubtitle')}</div>
@@ -1579,7 +1560,7 @@ export function Canvas() {
         </div>
       </div>
     ),
-    [configuredApiKeyCount, t]
+    [configuredProviderCount, t]
   );
 
   return (
@@ -1631,7 +1612,7 @@ export function Canvas() {
       </ReactFlow>
 
       {nodes.length === 0 && emptyHint}
-      {nodes.length > 0 && configuredApiKeyCount === 0 && (
+      {nodes.length > 0 && configuredProviderCount === 0 && (
         <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center px-6">
           <MissingApiKeyHint />
         </div>

@@ -19,16 +19,11 @@ import {
 export type UiRadiusPreset = 'compact' | 'default' | 'large';
 export type ThemeTonePreset = 'neutral' | 'warm' | 'cool';
 export type CanvasEdgeRoutingMode = 'spline' | 'orthogonal' | 'smartOrthogonal';
-export type ProviderApiKeys = Record<string, string>;
-export const DEFAULT_GRSAI_NANO_BANANA_PRO_MODEL = 'nano-banana-pro';
 
 interface SettingsState {
   isHydrated: boolean;
-  apiKeys: ProviderApiKeys;
   customProviders: CustomProviderConfig[];
   promptTemplates: PromptTemplateConfig[];
-  grsaiNanoBananaProModel: string;
-  hideProviderGuidePopover: boolean;
   downloadPresetPaths: string[];
   useUploadFilenameAsNodeTitle: boolean;
   storyboardGenKeepStyleConsistent: boolean;
@@ -49,11 +44,8 @@ interface SettingsState {
   autoCheckAppUpdateOnLaunch: boolean;
   enableUpdateDialog: boolean;
   markHydrated: () => void;
-  setProviderApiKey: (providerId: string, key: string) => void;
   setCustomProviders: (providers: CustomProviderConfig[]) => void;
   setPromptTemplates: (templates: PromptTemplateConfig[]) => void;
-  setGrsaiNanoBananaProModel: (model: string) => void;
-  setHideProviderGuidePopover: (hide: boolean) => void;
   setDownloadPresetPaths: (paths: string[]) => void;
   setUseUploadFilenameAsNodeTitle: (enabled: boolean) => void;
   setStoryboardGenKeepStyleConsistent: (enabled: boolean) => void;
@@ -83,10 +75,6 @@ function normalizeHexColor(input: string): string {
     return '#3B82F6';
   }
   return trimmed.startsWith('#') ? trimmed.toUpperCase() : `#${trimmed.toUpperCase()}`;
-}
-
-function normalizeApiKey(input: string): string {
-  return input.trim();
 }
 
 function normalizePriceDisplayCurrencyMode(
@@ -122,14 +110,6 @@ function normalizeGrsaiCreditTierId(
   }
 }
 
-function normalizeGrsaiNanoBananaProModel(input: string | null | undefined): string {
-  const trimmed = (input ?? '').trim().toLowerCase();
-  if (trimmed === DEFAULT_GRSAI_NANO_BANANA_PRO_MODEL || trimmed.startsWith('nano-banana-pro-')) {
-    return trimmed;
-  }
-  return DEFAULT_GRSAI_NANO_BANANA_PRO_MODEL;
-}
-
 function normalizeCanvasEdgeRoutingMode(
   input: CanvasEdgeRoutingMode | string | null | undefined
 ): CanvasEdgeRoutingMode {
@@ -137,39 +117,6 @@ function normalizeCanvasEdgeRoutingMode(
     return input;
   }
   return 'spline';
-}
-
-function normalizeApiKeys(input: ProviderApiKeys | null | undefined): ProviderApiKeys {
-  if (!input) {
-    return {};
-  }
-
-  return Object.entries(input).reduce<ProviderApiKeys>((acc, [providerId, key]) => {
-    const normalizedProviderId = providerId.trim();
-    if (!normalizedProviderId) {
-      return acc;
-    }
-
-    acc[normalizedProviderId] = normalizeApiKey(key);
-    return acc;
-  }, {});
-}
-
-export function hasConfiguredApiKey(apiKeys: ProviderApiKeys): boolean {
-  return getConfiguredApiKeyCount(apiKeys) > 0;
-}
-
-export function getConfiguredApiKeyCount(
-  apiKeys: ProviderApiKeys,
-  providerIds?: readonly string[]
-): number {
-  const keysToCount = providerIds
-    ? providerIds.map((providerId) => apiKeys[providerId] ?? '')
-    : Object.values(apiKeys);
-
-  return keysToCount.reduce((count, key) => {
-    return normalizeApiKey(key).length > 0 ? count + 1 : count;
-  }, 0);
 }
 
 export function getConfiguredCustomProviderCount(
@@ -180,26 +127,16 @@ export function getConfiguredCustomProviderCount(
   }, 0);
 }
 
-export function getConfiguredProviderCount(
-  apiKeys: ProviderApiKeys,
-  customProviders: CustomProviderConfig[],
-  providerIds?: readonly string[]
-): number {
-  return (
-    getConfiguredApiKeyCount(apiKeys, providerIds) +
-    getConfiguredCustomProviderCount(customProviders)
-  );
+export function getConfiguredProviderCount(customProviders: CustomProviderConfig[]): number {
+  return getConfiguredCustomProviderCount(customProviders);
 }
 
 export const useSettingsStore = create<SettingsState>()(
   persist(
     (set) => ({
       isHydrated: false,
-      apiKeys: {},
       customProviders: [],
       promptTemplates: [],
-      grsaiNanoBananaProModel: DEFAULT_GRSAI_NANO_BANANA_PRO_MODEL,
-      hideProviderGuidePopover: false,
       downloadPresetPaths: [],
       useUploadFilenameAsNodeTitle: true,
       storyboardGenKeepStyleConsistent: true,
@@ -220,22 +157,10 @@ export const useSettingsStore = create<SettingsState>()(
       autoCheckAppUpdateOnLaunch: true,
       enableUpdateDialog: true,
       markHydrated: () => set({ isHydrated: true }),
-      setProviderApiKey: (providerId, key) =>
-        set((state) => ({
-          apiKeys: {
-            ...state.apiKeys,
-            [providerId]: normalizeApiKey(key),
-          },
-        })),
       setCustomProviders: (customProviders) =>
         set({ customProviders: normalizeCustomProviders(customProviders) }),
       setPromptTemplates: (promptTemplates) =>
         set({ promptTemplates: normalizePromptTemplates(promptTemplates) }),
-      setGrsaiNanoBananaProModel: (model) =>
-        set({
-          grsaiNanoBananaProModel: normalizeGrsaiNanoBananaProModel(model),
-        }),
-      setHideProviderGuidePopover: (hide) => set({ hideProviderGuidePopover: hide }),
       setDownloadPresetPaths: (paths) => {
         const uniquePaths = Array.from(
           new Set(paths.map((path) => path.trim()).filter((path) => path.length > 0))
@@ -287,13 +212,9 @@ export const useSettingsStore = create<SettingsState>()(
       },
       migrate: (persistedState: unknown) => {
         const state = (persistedState ?? {}) as {
-          apiKey?: string;
-          apiKeys?: ProviderApiKeys;
           customProviders?: CustomProviderConfig[];
           promptTemplates?: PromptTemplateConfig[];
           ignoreAtTagWhenCopyingAndGenerating?: boolean;
-          grsaiNanoBananaProModel?: string;
-          hideProviderGuidePopover?: boolean;
           canvasEdgeRoutingMode?: CanvasEdgeRoutingMode | string;
           autoCheckAppUpdateOnLaunch?: boolean;
           enableUpdateDialog?: boolean;
@@ -306,53 +227,23 @@ export const useSettingsStore = create<SettingsState>()(
           preferDiscountedPrice?: boolean;
           grsaiCreditTierId?: GrsaiCreditTierId | string;
         };
+        const legacyState = { ...((persistedState ?? {}) as Record<string, unknown>) };
+        delete legacyState.apiKey;
+        delete legacyState.apiKeys;
+        delete legacyState.grsaiNanoBananaProModel;
+        delete legacyState.hideProviderGuidePopover;
 
-        const migratedApiKeys = normalizeApiKeys(state.apiKeys);
         const migratedCustomProviders = normalizeCustomProviders(state.customProviders);
         const migratedPromptTemplates = normalizePromptTemplates(state.promptTemplates);
         const ignoreAtTagWhenCopyingAndGenerating =
           state.ignoreAtTagWhenCopyingAndGenerating ?? true;
-        if (Object.keys(migratedApiKeys).length > 0) {
-          return {
-            ...(persistedState as object),
-            isHydrated: true,
-            apiKeys: migratedApiKeys,
-            customProviders: migratedCustomProviders,
-            promptTemplates: migratedPromptTemplates,
-            ignoreAtTagWhenCopyingAndGenerating,
-            grsaiNanoBananaProModel: normalizeGrsaiNanoBananaProModel(
-              state.grsaiNanoBananaProModel
-            ),
-            hideProviderGuidePopover: state.hideProviderGuidePopover ?? false,
-            canvasEdgeRoutingMode: normalizeCanvasEdgeRoutingMode(state.canvasEdgeRoutingMode),
-            autoCheckAppUpdateOnLaunch: state.autoCheckAppUpdateOnLaunch ?? true,
-            enableUpdateDialog: state.enableUpdateDialog ?? true,
-            enableStoryboardGenGridPreviewShortcut:
-              state.enableStoryboardGenGridPreviewShortcut ?? false,
-            showStoryboardGenAdvancedRatioControls:
-              state.showStoryboardGenAdvancedRatioControls ?? false,
-            storyboardGenAutoInferEmptyFrame: state.storyboardGenAutoInferEmptyFrame ?? true,
-            showNodePrice: state.showNodePrice ?? true,
-            priceDisplayCurrencyMode: normalizePriceDisplayCurrencyMode(
-              state.priceDisplayCurrencyMode
-            ),
-            usdToCnyRate: normalizeUsdToCnyRate(state.usdToCnyRate),
-            preferDiscountedPrice: state.preferDiscountedPrice ?? false,
-            grsaiCreditTierId: normalizeGrsaiCreditTierId(state.grsaiCreditTierId),
-          };
-        }
 
         return {
-          ...(persistedState as object),
+          ...legacyState,
           isHydrated: true,
-          apiKeys: state.apiKey ? { ppio: normalizeApiKey(state.apiKey) } : {},
           customProviders: migratedCustomProviders,
           promptTemplates: migratedPromptTemplates,
           ignoreAtTagWhenCopyingAndGenerating,
-          grsaiNanoBananaProModel: normalizeGrsaiNanoBananaProModel(
-            state.grsaiNanoBananaProModel
-          ),
-          hideProviderGuidePopover: state.hideProviderGuidePopover ?? false,
           canvasEdgeRoutingMode: normalizeCanvasEdgeRoutingMode(state.canvasEdgeRoutingMode),
           autoCheckAppUpdateOnLaunch: state.autoCheckAppUpdateOnLaunch ?? true,
           enableUpdateDialog: state.enableUpdateDialog ?? true,

@@ -1,7 +1,6 @@
 import {
   generateImage,
   getGenerateImageJob,
-  setApiKey,
   submitGenerateImageJob,
 } from '@/commands/ai';
 import { imageUrlToDataUrl, persistImageLocally } from '@/features/canvas/application/imageData';
@@ -27,7 +26,6 @@ async function normalizeReferenceImages(payload: GenerateImagePayload): Promise<
 }
 
 export const tauriAiGateway: AiGateway = {
-  setApiKey,
   generateImage: async (payload: GenerateImagePayload) => {
     const normalizedReferenceImages = await normalizeReferenceImages(payload);
 

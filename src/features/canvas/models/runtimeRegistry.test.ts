@@ -78,18 +78,32 @@ const openAiImageProviders: CustomProviderConfig[] = [
 ];
 
 describe('runtimeRegistry', () => {
-  it('adds custom providers after built-in providers', () => {
+  it('lists custom providers without built-in API providers', () => {
     const providers = listRuntimeModelProviders(customProviders);
-    const lastProvider = providers[providers.length - 1];
 
-    expect(lastProvider?.id).toBe('custom-provider:gateway-a');
-    expect(lastProvider?.runtimeKind).toBe('custom-provider');
+    expect(providers).toHaveLength(1);
+    expect(providers[0]).toMatchObject({
+      id: 'custom-provider:gateway-a',
+      runtimeKind: 'custom-provider',
+    });
   });
 
-  it('creates runtime models for enabled custom provider models', () => {
+  it('creates runtime models only for enabled custom provider models', () => {
     const models = listRuntimeImageModels(customProviders);
 
+    expect(models).toHaveLength(1);
     expect(models.some((model) => model.id === 'custom-provider:gateway-a:model-main')).toBe(true);
+    expect(models.every((model) => model.runtimeProvider.kind === 'custom-provider')).toBe(true);
+  });
+
+  it('returns a supplier configuration placeholder when no supplier model is available', () => {
+    const models = listRuntimeImageModels([]);
+    const fallback = getRuntimeImageModel('kie/nano-banana-2', []);
+
+    expect(models).toHaveLength(1);
+    expect(models[0].runtimeProvider.kind).toBe('custom-provider');
+    expect(fallback.id).toBe(models[0].id);
+    expect(fallback.runtimeProvider.kind).toBe('custom-provider');
   });
 
   it('returns edited runtime metadata for an existing custom model id', () => {
@@ -115,7 +129,7 @@ describe('runtimeRegistry', () => {
     expect(model.runtimeProvider.remoteModelId).toBe('Nano_Banana_Pro_4K_0');
   });
 
-  it('falls back to default built-in model when a custom model is disabled', () => {
+  it('falls back to the supplier placeholder when a custom model is disabled', () => {
     const disabledProviders: CustomProviderConfig[] = [
       {
         ...customProviders[0],
@@ -130,12 +144,12 @@ describe('runtimeRegistry', () => {
 
     expect(
       getRuntimeImageModel('custom-provider:gateway-a:model-main', disabledProviders).providerId
-    ).toBe('kie');
+    ).toBe('custom-provider:__unconfigured__');
   });
 
-  it('falls back to default built-in model when custom id is missing', () => {
+  it('falls back to the first custom supplier model when custom id is missing', () => {
     expect(getRuntimeImageModel('custom-provider:missing:model', customProviders).providerId).toBe(
-      'kie'
+      'custom-provider:gateway-a'
     );
   });
 

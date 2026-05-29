@@ -1,23 +1,16 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import { X, FolderOpen, Plus, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
-import remarkBreaks from 'remark-breaks';
 import { getVersion } from '@tauri-apps/api/app';
 import { open } from '@tauri-apps/plugin-dialog';
-import { openUrl } from '@tauri-apps/plugin-opener';
 import { useSettingsStore } from '@/stores/settingsStore';
-import { BuiltinProviderSettingsSection } from '@/components/settings/BuiltinProviderSettingsSection';
 import { CustomProviderEditorDialog } from '@/components/settings/CustomProviderEditorDialog';
 import { CustomProvidersPage } from '@/components/settings/CustomProvidersPage';
 import { DeleteProviderConfirmDialog } from '@/components/settings/DeleteProviderConfirmDialog';
 import { UiCheckbox, UiSelect } from '@/components/ui';
 import { UI_CONTENT_OVERLAY_INSET_CLASS, UI_DIALOG_TRANSITION_MS } from '@/components/ui/motion';
 import { useDialogTransition } from '@/components/ui/useDialogTransition';
-import { listModelProviders } from '@/features/canvas/models';
 import { GRSAI_CREDIT_TIERS } from '@/features/canvas/pricing/types';
-import providerGuideMarkdown from '../../docs/settings/provider-guide.md?raw';
 import type { SettingsCategory } from '@/features/settings/settingsEvents';
 import type { CustomProviderConfig } from '@/stores/customProviderConfig';
 
@@ -78,10 +71,7 @@ export function SettingsDialog({
 }: SettingsDialogProps) {
   const { t, i18n } = useTranslation();
   const {
-    apiKeys,
     customProviders,
-    grsaiNanoBananaProModel,
-    hideProviderGuidePopover,
     downloadPresetPaths,
     useUploadFilenameAsNodeTitle,
     storyboardGenKeepStyleConsistent,
@@ -101,9 +91,7 @@ export function SettingsDialog({
     canvasEdgeRoutingMode,
     autoCheckAppUpdateOnLaunch,
     enableUpdateDialog,
-    setProviderApiKey,
     setCustomProviders,
-    setGrsaiNanoBananaProModel,
     setDownloadPresetPaths,
     setUseUploadFilenameAsNodeTitle,
     setStoryboardGenKeepStyleConsistent,
@@ -124,21 +112,8 @@ export function SettingsDialog({
     setAutoCheckAppUpdateOnLaunch,
     setEnableUpdateDialog,
   } = useSettingsStore();
-  const providers = useMemo(() => {
-    const providerOrder = ['kie', 'ppio', 'fal', 'grsai'];
-    const providerIndex = new Map(providerOrder.map((id, index) => [id, index]));
-    return listModelProviders().slice().sort((left, right) => {
-      const leftIndex = providerIndex.get(left.id) ?? Number.MAX_SAFE_INTEGER;
-      const rightIndex = providerIndex.get(right.id) ?? Number.MAX_SAFE_INTEGER;
-      return leftIndex - rightIndex;
-    });
-  }, []);
   const [activeCategory, setActiveCategory] = useState<SettingsCategory>(initialCategory);
   const [appVersion, setAppVersion] = useState<string>('');
-  const [localApiKeys, setLocalApiKeys] = useState<Record<string, string>>(apiKeys);
-  const [localGrsaiNanoBananaProModel, setLocalGrsaiNanoBananaProModel] = useState(
-    grsaiNanoBananaProModel
-  );
   const [localDownloadPathInput, setLocalDownloadPathInput] = useState('');
   const [localDownloadPresetPaths, setLocalDownloadPresetPaths] = useState(downloadPresetPaths);
   const [localUseUploadFilenameAsNodeTitle, setLocalUseUploadFilenameAsNodeTitle] = useState(
@@ -176,7 +151,6 @@ export function SettingsDialog({
   );
   const [localEnableUpdateDialog, setLocalEnableUpdateDialog] = useState(enableUpdateDialog);
   const [checkUpdateStatus, setCheckUpdateStatus] = useState<'' | 'checking' | 'has-update' | 'up-to-date' | 'failed'>('');
-  const [revealedApiKeys, setRevealedApiKeys] = useState<Record<string, boolean>>({});
   const [isCreateProviderDialogOpen, setIsCreateProviderDialogOpen] = useState(false);
   const [editingProviderId, setEditingProviderId] = useState<string | null>(null);
   const [pendingDeleteProviderId, setPendingDeleteProviderId] = useState<string | null>(null);
@@ -214,9 +188,7 @@ export function SettingsDialog({
     if (!isOpen) {
       return;
     }
-    setLocalApiKeys(apiKeys);
     setLocalDownloadPresetPaths(downloadPresetPaths);
-    setLocalGrsaiNanoBananaProModel(grsaiNanoBananaProModel);
     setLocalUseUploadFilenameAsNodeTitle(useUploadFilenameAsNodeTitle);
     setLocalStoryboardGenKeepStyleConsistent(storyboardGenKeepStyleConsistent);
     setLocalStoryboardGenDisableTextInImage(storyboardGenDisableTextInImage);
@@ -236,16 +208,13 @@ export function SettingsDialog({
     setLocalAutoCheckAppUpdateOnLaunch(autoCheckAppUpdateOnLaunch);
     setLocalEnableUpdateDialog(enableUpdateDialog);
     setCheckUpdateStatus('');
-    setRevealedApiKeys({});
     setLocalDownloadPathInput('');
     setIsCreateProviderDialogOpen(false);
     setEditingProviderId(null);
     setPendingDeleteProviderId(null);
   }, [
     isOpen,
-    apiKeys,
     downloadPresetPaths,
-    grsaiNanoBananaProModel,
     useUploadFilenameAsNodeTitle,
     storyboardGenKeepStyleConsistent,
     storyboardGenDisableTextInImage,
@@ -275,10 +244,6 @@ export function SettingsDialog({
   }, [initialCategory, isOpen]);
 
   const handleSave = useCallback(() => {
-    providers.forEach((provider) => {
-      setProviderApiKey(provider.id, localApiKeys[provider.id] ?? '');
-    });
-    setGrsaiNanoBananaProModel(localGrsaiNanoBananaProModel);
     setDownloadPresetPaths(localDownloadPresetPaths);
     setUseUploadFilenameAsNodeTitle(localUseUploadFilenameAsNodeTitle);
     setStoryboardGenKeepStyleConsistent(localStoryboardGenKeepStyleConsistent);
@@ -300,9 +265,7 @@ export function SettingsDialog({
     setEnableUpdateDialog(localEnableUpdateDialog);
     onClose();
   }, [
-    localApiKeys,
     localDownloadPresetPaths,
-    localGrsaiNanoBananaProModel,
     localUseUploadFilenameAsNodeTitle,
     localStoryboardGenKeepStyleConsistent,
     localStoryboardGenDisableTextInImage,
@@ -321,10 +284,6 @@ export function SettingsDialog({
     localCanvasEdgeRoutingMode,
     localAutoCheckAppUpdateOnLaunch,
     localEnableUpdateDialog,
-    providers,
-    setProviderApiKey,
-    setCustomProviders,
-    setGrsaiNanoBananaProModel,
     setDownloadPresetPaths,
     setUseUploadFilenameAsNodeTitle,
     setStoryboardGenKeepStyleConsistent,
@@ -426,13 +385,6 @@ export function SettingsDialog({
     setLocalDownloadPresetPaths((previous) => previous.filter((value) => value !== path));
   }, []);
 
-  const handleMarkdownLinkClick = useCallback((href?: string) => {
-    if (!href) {
-      return;
-    }
-    void openUrl(href);
-  }, []);
-
   if (!shouldRender) return null;
 
   return (
@@ -474,20 +426,6 @@ export function SettingsDialog({
               `}
               >
                 <span className="text-sm">{t('settings.general')}</span>
-              </button>
-
-              <button
-                onClick={() => setActiveCategory('providers')}
-                className={`
-                w-full flex items-center gap-3 px-4 py-2.5 text-left
-                transition-colors
-                ${activeCategory === 'providers'
-                    ? 'bg-accent/10 text-text-dark border-l-2 border-accent'
-                    : 'text-text-muted hover:bg-bg-dark hover:text-text-dark'
-                  }
-              `}
-              >
-                <span className="text-sm">{t('settings.providers')}</span>
               </button>
 
               <button
@@ -564,40 +502,6 @@ export function SettingsDialog({
 
           {/* Content */}
           <div className="flex-1 flex flex-col">
-            {activeCategory === 'providers' && (
-              <>
-                <div className="px-6 py-5 border-b border-border-dark">
-                  <h2 className="text-lg font-semibold text-text-dark">
-                    {t('settings.providers')}
-                  </h2>
-                  <p className="text-sm text-text-muted mt-1">
-                    {t('settings.providersDesc')}
-                  </p>
-                </div>
-
-                <BuiltinProviderSettingsSection
-                  providers={providers}
-                  localApiKeys={localApiKeys}
-                  setLocalApiKeys={setLocalApiKeys}
-                  revealedApiKeys={revealedApiKeys}
-                  setRevealedApiKeys={setRevealedApiKeys}
-                  localGrsaiNanoBananaProModel={localGrsaiNanoBananaProModel}
-                  setLocalGrsaiNanoBananaProModel={setLocalGrsaiNanoBananaProModel}
-                  setProviderApiKey={setProviderApiKey}
-                />
-
-                <div className="px-6 py-4 border-t border-border-dark flex justify-end">
-                  <button
-                    onClick={handleSave}
-                    className="px-4 py-2 text-sm font-medium bg-accent text-white rounded
-                             transition-colors disabled:cursor-not-allowed disabled:opacity-50 hover:bg-accent/80"
-                  >
-                    {t('common.save')}
-                  </button>
-                </div>
-              </>
-            )}
-
             {activeCategory === 'suppliers' && (
               <>
                 <CustomProvidersPage
@@ -1050,12 +954,12 @@ export function SettingsDialog({
                     <p className="text-text-dark">
                       {t('settings.aboutRepositoryLabel')}:{' '}
                       <a
-                        href="https://github.com/henjicc/Storyboard-Copilot"
+                        href="https://github.com/fishlikewater/mirage-studio"
                         target="_blank"
                         rel="noreferrer"
                         className="text-accent hover:underline break-all"
                       >
-                        https://github.com/henjicc/Storyboard-Copilot
+                        https://github.com/fishlikewater/mirage-studio
                       </a>
                     </p>
                   </div>
@@ -1118,35 +1022,6 @@ export function SettingsDialog({
             )}
           </div>
         </div>
-        {activeCategory === 'providers' && !hideProviderGuidePopover && (
-          <div
-            className={`absolute top-0 bottom-0 left-[calc(50%+366px)] right-0 min-w-[240px] max-w-[380px] rounded-lg border border-border-dark bg-surface-dark/95 p-3 shadow-xl transition-opacity duration-200 ${isVisible ? 'opacity-100' : 'opacity-0'}`}
-          >
-            <div className="markdown-body break-words text-xs leading-5 text-text-muted [&_a]:text-accent [&_blockquote]:border-l-2 [&_blockquote]:border-white/20 [&_blockquote]:pl-3 [&_code]:rounded [&_code]:bg-white/10 [&_code]:px-1 [&_code]:py-0.5 [&_h1]:text-sm [&_h1]:font-semibold [&_h2]:text-xs [&_h2]:font-semibold [&_h3]:text-xs [&_h3]:font-semibold [&_hr]:border-white/10 [&_li]:my-0.5 [&_ol]:list-decimal [&_ol]:pl-4 [&_p]:my-0 [&_p+_p]:mt-4 [&_pre]:overflow-auto [&_pre]:rounded-md [&_pre]:bg-black/30 [&_pre]:p-2 [&_ul]:list-disc [&_ul]:pl-4">
-              <ReactMarkdown
-                remarkPlugins={[remarkGfm, remarkBreaks]}
-                components={{
-                  a: ({ href, children, ...props }) => (
-                    <a
-                      {...props}
-                      href={href}
-                      target="_blank"
-                      rel="noreferrer"
-                      onClick={(event) => {
-                        event.preventDefault();
-                        handleMarkdownLinkClick(href);
-                      }}
-                    >
-                      {children}
-                    </a>
-                  ),
-                }}
-              >
-                {providerGuideMarkdown}
-              </ReactMarkdown>
-            </div>
-          </div>
-        )}
         <CustomProviderEditorDialog
           isOpen={isCreateProviderDialogOpen || editingProvider !== null}
           mode={editingProvider ? 'edit' : 'create'}

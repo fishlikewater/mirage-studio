@@ -21,10 +21,10 @@ fn resolve_log_dir() -> Option<PathBuf> {
 
     #[cfg(target_os = "macos")]
     if let Ok(home) = std::env::var("HOME") {
-        candidates.push(PathBuf::from(home).join("Library/Logs/storyboard-copilot"));
+        candidates.push(PathBuf::from(home).join("Library/Logs/mirage-studio"));
     }
 
-    candidates.push(std::env::temp_dir().join("storyboard-copilot/logs"));
+    candidates.push(std::env::temp_dir().join("mirage-studio/logs"));
 
     if let Ok(current_dir) = std::env::current_dir() {
         candidates.push(current_dir.join("logs"));
@@ -41,7 +41,7 @@ fn resolve_log_dir() -> Option<PathBuf> {
 
 fn setup_logging() {
     let env_filter = tracing_subscriber::EnvFilter::try_from_default_env()
-        .unwrap_or_else(|_| "info,storyboard_copilot=debug".into());
+        .unwrap_or_else(|_| "info,mirage_studio=debug".into());
 
     if let Some(log_dir) = resolve_log_dir() {
         let file_appender = tracing_appender::rolling::daily(log_dir, "storyboard.log");
@@ -59,7 +59,7 @@ fn setup_logging() {
             .init();
     }
 
-    info!("Storyboard Copilot starting...");
+    info!("mirage-studio starting...");
 }
 
 fn show_main_window(app: &tauri::AppHandle) {
@@ -176,7 +176,6 @@ pub fn run() {
             image::save_image_source_to_directory,
             image::save_image_source_to_app_debug_dir,
             image::copy_image_source_to_clipboard,
-            ai_commands::set_api_key,
             ai_commands::submit_generate_image_job,
             ai_commands::get_generate_image_job,
             ai_commands::generate_image,

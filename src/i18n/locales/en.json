@@ -1,7 +1,7 @@
 {
   "app": {
-    "title": "Storyboard Copilot",
-    "subtitle": "AI Storyboard Tool"
+    "title": "天工",
+    "subtitle": "mirage-studio"
   },
   "common": {
     "save": "Save",
@@ -70,8 +70,8 @@
   "modelParams": {
     "provider": "Provider",
     "model": "Model",
-    "providerKeyRequiredTitle": "Provider API key required",
-    "providerKeyRequiredDesc": "{{provider}} is not configured yet. Please add its API key in Settings before using it.",
+    "providerKeyRequiredTitle": "Supplier configuration required",
+    "providerKeyRequiredDesc": "{{provider}} is not configured yet. Please finish supplier configuration in Settings before using it.",
     "goConfigure": "Go configure",
     "autoAspectRatio": "Auto",
     "quality": "Quality",
@@ -111,7 +111,7 @@
     },
     "imageEdit": {
       "promptRequired": "Please enter a prompt",
-      "apiKeyRequired": "Please set API key in Settings",
+      "apiKeyRequired": "Please configure a supplier in Settings",
       "resultTitle": "Result Image",
       "promptPlaceholder": "Describe anything you want to generate or edit",
       "edit": "Edit"
@@ -193,8 +193,6 @@
   },
   "settings": {
     "title": "Settings",
-    "providers": "API Config",
-    "providersDesc": "Configure API keys for built-in providers and review integration guidance.",
     "suppliers": "Suppliers",
     "suppliersDesc": "Manage custom suppliers that use OpenAPI or XAIS Task and their models.",
     "addSupplier": "Add Supplier",
@@ -204,7 +202,6 @@
     "confirmDeleteSupplier": "Delete",
     "pricing": "Pricing",
     "pricingDesc": "Manage node price display, exchange rate conversion, and credit-pack estimates.",
-    "providerGuideText": "Different providers vary in model capability, queue speed, stability, and pricing. Switch providers based on your task, and follow each provider's recommended parameters.",
     "doNotShowAgain": "Do not show again",
     "appearance": "Appearance",
     "appearanceDesc": "Customize app appearance",
@@ -214,11 +211,7 @@
     "aboutDesc": "Application information",
     "general": "General",
     "generalDesc": "General settings",
-    "apiKey": "API Key",
     "model": "Model",
-    "enterApiKey": "Enter API Key",
-    "nanoBananaProModel": "Nano Banana Pro Model",
-    "nanoBananaProModelDesc": "Switch the Nano Banana Pro endpoint for this provider. If one endpoint fails, try another one. See the <modelListLink>model list</modelListLink> for details.",
     "addProvider": "Add Provider",
     "customProvidersTitle": "Custom Providers",
     "customProvidersDesc": "Add provider profiles that use OpenAPI or XAIS Task and keep a separate model list for each provider.",
@@ -297,13 +290,9 @@
     "addPath": "Add Path",
     "chooseFolder": "Choose Folder",
     "noDownloadPresetPaths": "No preset path yet",
-    "providerApiKeyGuidePrefix": "First",
-    "providerRegisterLink": "click here to sign up",
-    "providerApiKeyGuideMiddle": ", then",
-    "getApiKeyLink": "click here to get API key",
-    "missingAnyApiKeyMessage": "You have not configured any API keys yet. Please open Settings to configure one.",
-    "openProvidersSettings": "Open Settings",
-    "aboutAppName": "Storyboard Copilot",
+    "missingSupplierMessage": "No usable supplier is configured yet. Open Settings to add a supplier.",
+    "openSuppliersSettings": "Open Supplier Settings",
+    "aboutAppName": "天工",
     "aboutIntro": "An AI storyboard workstation based on a node canvas for generation, editing, and storyboard workflows.",
     "aboutVersionLabel": "Version",
     "aboutVersionUnknown": "Unknown",

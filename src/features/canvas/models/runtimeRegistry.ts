@@ -1,8 +1,6 @@
 import {
   DEFAULT_IMAGE_MODEL_ID,
   getImageModel,
-  listImageModels,
-  listModelProviders,
 } from './registry';
 import type {
   RuntimeImageModelDefinition,
@@ -16,33 +14,19 @@ import {
   type CustomProviderConfig,
 } from '@/stores/customProviderConfig';
 
-const BUILTIN_PROVIDER_ORDER = ['kie', 'ppio', 'fal', 'grsai'];
+const SUPPLIER_CONFIGURATION_PROVIDER_ID = '__unconfigured__';
+const SUPPLIER_CONFIGURATION_MODEL_ID = buildCustomProviderModelId(
+  SUPPLIER_CONFIGURATION_PROVIDER_ID,
+  'configure-supplier'
+);
 
 export function buildCustomRuntimeProviderId(providerId: string): string {
   return `custom-provider:${providerId}`;
 }
 
-function sortProvidersByOrder<T extends { id: string }>(providers: T[]): T[] {
-  const orderIndex = new Map(BUILTIN_PROVIDER_ORDER.map((id, index) => [id, index]));
-  return providers.slice().sort((left, right) => {
-    const leftIndex = orderIndex.get(left.id) ?? Number.MAX_SAFE_INTEGER;
-    const rightIndex = orderIndex.get(right.id) ?? Number.MAX_SAFE_INTEGER;
-    if (leftIndex !== rightIndex) {
-      return leftIndex - rightIndex;
-    }
-    return left.id.localeCompare(right.id);
-  });
-}
-
 export function listRuntimeModelProviders(
   customProviders: CustomProviderConfig[]
 ): RuntimeModelProviderDefinition[] {
-  const builtins = sortProvidersByOrder(listModelProviders()).map((provider) => ({
-    ...provider,
-    runtimeKind: 'builtin' as const,
-    configured: true,
-  }));
-
   const customs = customProviders.map((provider) => ({
     id: buildCustomRuntimeProviderId(provider.id),
     name: provider.name,
@@ -53,20 +37,12 @@ export function listRuntimeModelProviders(
     protocol: provider.protocol,
   }));
 
-  return [...builtins, ...customs];
+  return customs;
 }
 
 export function listRuntimeImageModels(
   customProviders: CustomProviderConfig[]
 ): RuntimeImageModelDefinition[] {
-  const builtins = listImageModels().map<RuntimeImageModelDefinition>((model) => ({
-    ...model,
-    runtimeProvider: {
-      kind: 'builtin',
-    },
-    supportsResolutionSelection: true,
-  }));
-
   const baseModel = getImageModel(DEFAULT_IMAGE_MODEL_ID);
   const customs = customProviders.flatMap((provider) => {
     const openapiConnection = resolveOpenApiConnection(provider);
@@ -105,7 +81,34 @@ export function listRuntimeImageModels(
       }));
   });
 
-  return [...builtins, ...customs];
+  if (customs.length > 0) {
+    return customs;
+  }
+
+  return [
+    {
+      ...baseModel,
+      id: SUPPLIER_CONFIGURATION_MODEL_ID,
+      displayName: '配置供应商',
+      providerId: buildCustomRuntimeProviderId(SUPPLIER_CONFIGURATION_PROVIDER_ID),
+      description: '请先在设置中添加供应商和模型。',
+      pricing: undefined,
+      resolveRequest: () => ({
+        requestModel: SUPPLIER_CONFIGURATION_MODEL_ID,
+        modeLabel: '供应商未配置',
+      }),
+      runtimeProvider: {
+        kind: 'custom-provider',
+        providerProfileId: SUPPLIER_CONFIGURATION_PROVIDER_ID,
+        providerDisplayName: '供应商',
+        protocol: 'openapi',
+        baseUrl: '',
+        apiKey: '',
+        remoteModelId: '',
+      },
+      supportsResolutionSelection: false,
+    },
+  ];
 }
 
 export function getRuntimeImageModel(
@@ -115,6 +118,6 @@ export function getRuntimeImageModel(
   const runtimeModels = listRuntimeImageModels(customProviders);
   return (
     runtimeModels.find((model) => model.id === modelId) ??
-    runtimeModels.find((model) => model.id === DEFAULT_IMAGE_MODEL_ID)!
+    runtimeModels[0]
   );
 }

@@ -66,7 +66,6 @@ import {
   resolveImageModelResolution,
   resolveImageModelResolutions,
 } from '@/features/canvas/models';
-import { GRSAI_NANO_BANANA_PRO_MODEL_ID } from '@/features/canvas/models/image/grsai/nanoBananaPro';
 import { FAL_NANO_BANANA_2_MODEL_ID } from '@/features/canvas/models/image/fal/nanoBanana2';
 import { KIE_NANO_BANANA_2_MODEL_ID } from '@/features/canvas/models/image/kie/nanoBanana2';
 import { resolveModelPriceDisplay } from '@/features/canvas/pricing';
@@ -465,9 +464,7 @@ export const StoryboardGenNode = memo(({ id, data, selected, width, height }: St
   const addNode = useCanvasStore((state) => state.addNode);
   const addEdge = useCanvasStore((state) => state.addEdge);
   const findNodePosition = useCanvasStore((state) => state.findNodePosition);
-  const apiKeys = useSettingsStore((state) => state.apiKeys);
   const customProviders = useSettingsStore((state) => state.customProviders);
-  const grsaiNanoBananaProModel = useSettingsStore((state) => state.grsaiNanoBananaProModel);
   const storyboardGenKeepStyleConsistent = useSettingsStore(
     (state) => state.storyboardGenKeepStyleConsistent
   );
@@ -539,17 +536,12 @@ export const StoryboardGenNode = memo(({ id, data, selected, width, height }: St
     return getRuntimeImageModel(modelId, customProviders);
   }, [customProviders, nodeData.model]);
   const generationContext = useMemo(
-    () => resolveGenerationContext(selectedModel, apiKeys),
-    [apiKeys, selectedModel]
+    () => resolveGenerationContext(selectedModel),
+    [selectedModel]
   );
   const effectiveExtraParams = useMemo(
-    () => ({
-      ...(nodeData.extraParams ?? {}),
-      ...(selectedModel.id === GRSAI_NANO_BANANA_PRO_MODEL_ID
-        ? { grsai_pro_model: grsaiNanoBananaProModel }
-        : {}),
-    }),
-    [grsaiNanoBananaProModel, nodeData.extraParams, selectedModel.id]
+    () => nodeData.extraParams ?? {},
+    [nodeData.extraParams]
   );
   const resolutionOptions = useMemo(
     () => resolveImageModelResolutions(selectedModel, { extraParams: effectiveExtraParams }),
@@ -980,7 +972,7 @@ export const StoryboardGenNode = memo(({ id, data, selected, width, height }: St
     }
 
     if (!generationContext.isConfigured) {
-      const errorMessage = '请在设置中填写 API Key';
+      const errorMessage = '请先在设置中配置供应商';
       setError(errorMessage);
       void showErrorDialog(errorMessage, '错误');
       return;
@@ -1020,10 +1012,6 @@ export const StoryboardGenNode = memo(({ id, data, selected, width, height }: St
     setError(null);
 
     try {
-      if (generationContext.shouldSetApiKey) {
-        await canvasAiGateway.setApiKey(selectedModel.providerId, generationContext.apiKey);
-      }
-
       // 生成网格图片作为最后一张参考图片
       const gridImageDataUrl = generateGridImageDataUrl(
         resolvedRequestAspectRatio,
@@ -1072,7 +1060,7 @@ export const StoryboardGenNode = memo(({ id, data, selected, width, height }: St
       updateNodeData(newNodeId, {
         generationJobId: jobId,
         generationSourceType: 'storyboardGen',
-        generationProviderId: generationContext.resumeProviderId,
+        generationProviderId: null,
         generationClientSessionId: CURRENT_RUNTIME_SESSION_ID,
         generationDebugContext,
         generationStoryboardMetadata: {

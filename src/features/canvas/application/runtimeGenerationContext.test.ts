@@ -51,36 +51,37 @@ const xaisProviders: CustomProviderConfig[] = [
 ];
 
 describe('runtimeGenerationContext', () => {
-  it('returns built-in provider context from apiKeys', () => {
+  it('ignores built-in API keys when resolving a legacy built-in model id', () => {
     const model = getRuntimeImageModel('kie/nano-banana-2', customProviders);
-    const context = resolveGenerationContext(model, {
-      kie: 'built-in-token',
-    });
+    const context = resolveGenerationContext(model);
 
     expect(context.isConfigured).toBe(true);
-    expect(context.shouldSetApiKey).toBe(true);
-    expect(context.resumeProviderId).toBe('kie');
+    expect(context.providerRuntime?.kind).toBe('custom-provider');
+    expect(context.providerRuntime?.providerProfileId).toBe('gateway-a');
+  });
+
+  it('returns an unconfigured supplier context when no supplier model exists', () => {
+    const model = getRuntimeImageModel('kie/nano-banana-2', []);
+    const context = resolveGenerationContext(model);
+
+    expect(context.isConfigured).toBe(false);
     expect(context.providerRuntime).toBeUndefined();
   });
 
-  it('returns custom openapi runtime without requiring set_api_key', () => {
+  it('returns custom openapi runtime from supplier configuration', () => {
     const model = getRuntimeImageModel('custom-provider:gateway-a:model-main', customProviders);
-    const context = resolveGenerationContext(model, {});
+    const context = resolveGenerationContext(model);
 
     expect(context.isConfigured).toBe(true);
-    expect(context.shouldSetApiKey).toBe(false);
-    expect(context.resumeProviderId).toBeNull();
     expect(context.providerRuntime?.kind).toBe('custom-provider');
     expect(context.providerRuntime?.remoteModelId).toBe('Nano_Banana_Pro_2K_0');
   });
 
-  it('returns xais-task runtime without requiring set_api_key', () => {
+  it('returns xais-task runtime from supplier configuration', () => {
     const model = getRuntimeImageModel('custom-provider:gateway-xais:model-main', xaisProviders);
-    const context = resolveGenerationContext(model, {});
+    const context = resolveGenerationContext(model);
 
     expect(context.isConfigured).toBe(true);
-    expect(context.shouldSetApiKey).toBe(false);
-    expect(context.resumeProviderId).toBeNull();
     expect(context.providerRuntime).toMatchObject({
       kind: 'custom-provider',
       protocol: 'xais-task',

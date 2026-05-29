@@ -20,7 +20,6 @@ import {
   UiSelect,
 } from '@/components/ui';
 import type { SettingsCategory } from '@/features/settings/settingsEvents';
-import { useSettingsStore } from '@/stores/settingsStore';
 import { openSettingsDialog } from '@/features/settings/settingsEvents';
 
 interface ModelParamsControlsProps {
@@ -191,7 +190,6 @@ export const ModelParamsControls = memo(({
   const [otherParamsAnchorBaseWidth, setOtherParamsAnchorBaseWidth] = useState<number | null>(null);
   const [panelProviderId, setPanelProviderId] = useState(selectedModel.providerId);
   const [missingConfigProvider, setMissingConfigProvider] = useState<ProviderOptionItem | null>(null);
-  const apiKeys = useSettingsStore((state) => state.apiKeys);
   const showResolutionControls = selectedModel.supportsResolutionSelection;
 
   const selectedProvider = useMemo(
@@ -240,8 +238,8 @@ export const ModelParamsControls = memo(({
         return {
           id: provider.id,
           label: provider.label || provider.name,
-          configured: Boolean(apiKeys[provider.id]?.trim()),
-          settingsCategory: 'providers' as const,
+          configured: false,
+          settingsCategory: 'suppliers' as const,
         };
       })
       .sort((left, right) => {
@@ -252,7 +250,7 @@ export const ModelParamsControls = memo(({
         }
         return left.label.localeCompare(right.label);
       });
-  }, [apiKeys, imageModels]);
+  }, [imageModels]);
   const providerModels = useMemo(
     () => imageModels.filter((model) => model.providerId === panelProviderId),
     [imageModels, panelProviderId]
@@ -849,7 +847,7 @@ export const ModelParamsControls = memo(({
                 variant="primary"
                 size="sm"
                 onClick={() => {
-                  const targetCategory = missingConfigProvider?.settingsCategory ?? 'providers';
+                  const targetCategory = missingConfigProvider?.settingsCategory ?? 'suppliers';
                   setMissingConfigProvider(null);
                   setOpenPanel(null);
                   openSettingsDialog({ category: targetCategory });

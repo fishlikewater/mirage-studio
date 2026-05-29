@@ -1,0 +1,21 @@
+{
+  "id": "mirage-studio-supplier-only",
+  "name": "mirage-studio-supplier-only",
+  "title": "Rename to mirage studio and supplier only settings",
+  "description": "Rename project/package display to mirage-studio / 天工 and remove built-in API configuration UI so settings keep supplier configuration only.",
+  "status": "planning",
+  "dev_type": null,
+  "scope": null,
+  "priority": "P1",
+  "creator": "zhangxiang",
+  "assignee": "zhangxiang",
+  "createdAt": "2026-05-29",
+  "completedAt": null,
+  "commit": null,
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [],
+  "notes": "",
+  "meta": {}
+}

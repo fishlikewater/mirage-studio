@@ -1,11 +1,7 @@
 import type { RuntimeImageModelDefinition, RuntimeProviderConfig } from '@/features/canvas/models';
-import type { ProviderApiKeys } from '@/stores/settingsStore';
 
 export interface RuntimeGenerationContext {
-  apiKey: string;
   isConfigured: boolean;
-  shouldSetApiKey: boolean;
-  resumeProviderId: string | null;
   providerRuntime?: RuntimeProviderConfig;
 }
 
@@ -14,8 +10,7 @@ function trim(value: string | null | undefined): string {
 }
 
 export function resolveGenerationContext(
-  model: RuntimeImageModelDefinition,
-  apiKeys: ProviderApiKeys
+  model: RuntimeImageModelDefinition
 ): RuntimeGenerationContext {
   if (model.runtimeProvider.kind === 'custom-provider') {
     const apiKey = trim(model.runtimeProvider.apiKey);
@@ -33,10 +28,7 @@ export function resolveGenerationContext(
         remoteModelId.length > 0;
 
       return {
-        apiKey,
         isConfigured,
-        shouldSetApiKey: false,
-        resumeProviderId: null,
         providerRuntime: isConfigured
           ? {
               ...model.runtimeProvider,
@@ -54,10 +46,7 @@ export function resolveGenerationContext(
     const isConfigured = apiKey.length > 0 && baseUrl.length > 0 && remoteModelId.length > 0;
 
     return {
-      apiKey,
       isConfigured,
-      shouldSetApiKey: false,
-      resumeProviderId: null,
       providerRuntime: isConfigured
         ? {
             ...model.runtimeProvider,
@@ -69,11 +58,7 @@ export function resolveGenerationContext(
     };
   }
 
-  const apiKey = trim(apiKeys[model.providerId]);
   return {
-    apiKey,
-    isConfigured: apiKey.length > 0,
-    shouldSetApiKey: apiKey.length > 0,
-    resumeProviderId: model.providerId,
+    isConfigured: false,
   };
 }
