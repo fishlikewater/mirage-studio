@@ -218,13 +218,8 @@ export const ModelParamsControls = memo(({
       .map((model) => {
         if (model.runtimeProvider.kind === 'custom-provider') {
           const isConfigured =
-            model.runtimeProvider.protocol === 'xais-task'
-              ? Boolean(model.runtimeProvider.submitBaseUrl?.trim()) &&
-                Boolean(model.runtimeProvider.waitBaseUrl?.trim()) &&
-                Boolean(model.runtimeProvider.assetBaseUrl?.trim()) &&
-                Boolean(model.runtimeProvider.apiKey?.trim())
-              : Boolean(model.runtimeProvider.baseUrl?.trim()) &&
-                Boolean(model.runtimeProvider.apiKey?.trim());
+            Boolean(model.runtimeProvider.baseUrl?.trim()) &&
+            Boolean(model.runtimeProvider.apiKey?.trim());
 
           return {
             id: model.providerId,

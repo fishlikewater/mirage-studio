@@ -10,7 +10,6 @@ import {
   buildCustomProviderModelId,
   isCustomProviderConfigured,
   resolveOpenApiConnection,
-  resolveXaisTaskConnection,
   type CustomProviderConfig,
 } from '@/stores/customProviderConfig';
 
@@ -46,7 +45,6 @@ export function listRuntimeImageModels(
   const baseModel = getImageModel(DEFAULT_IMAGE_MODEL_ID);
   const customs = customProviders.flatMap((provider) => {
     const openapiConnection = resolveOpenApiConnection(provider);
-    const xaisTaskConnection = resolveXaisTaskConnection(provider);
 
     return provider.models
       .filter((model) => model.enabled)
@@ -67,14 +65,7 @@ export function listRuntimeImageModels(
           providerDisplayName: provider.name,
           protocol: provider.protocol,
           baseUrl: openapiConnection.baseUrl,
-          apiKey:
-            provider.protocol === 'xais-task'
-              ? xaisTaskConnection.apiKey
-              : openapiConnection.apiKey,
-          submitBaseUrl: xaisTaskConnection.submitBaseUrl,
-          waitBaseUrl: xaisTaskConnection.waitBaseUrl,
-          assetBaseUrl: xaisTaskConnection.assetBaseUrl,
-          defaultOutputFormat: xaisTaskConnection.defaultOutputFormat,
+          apiKey: openapiConnection.apiKey,
           remoteModelId: model.remoteModelId,
         },
         supportsResolutionSelection: false,

@@ -38,19 +38,16 @@ describe('customProviderConfig', () => {
     });
   });
 
-  it('normalizes xais-task connection fields', () => {
+  it('drops unsupported legacy providers during normalization', () => {
     const providers = normalizeCustomProviders([
       {
-        id: 'gateway-xais',
-        name: 'Xais Gateway',
-        protocol: 'xais-task',
+        id: 'gateway-legacy',
+        name: 'Legacy Gateway',
+        protocol: 'legacy-task',
         connection: {
-          xaisTask: {
-            submitBaseUrl: ' https://sg2c.dchai.cn/ ',
-            waitBaseUrl: ' https://sg2.dchai.cn/ ',
-            assetBaseUrl: ' https://svt1.dchai.cn/ ',
+          legacyTask: {
+            baseUrl: ' https://sg2c.dchai.cn/ ',
             apiKey: ' token-2 ',
-            defaultOutputFormat: 'image/png',
           },
         },
         models: [
@@ -64,13 +61,7 @@ describe('customProviderConfig', () => {
       } as unknown as never,
     ]);
 
-    expect(providers[0].connection?.xaisTask).toEqual({
-      submitBaseUrl: 'https://sg2c.dchai.cn',
-      waitBaseUrl: 'https://sg2.dchai.cn',
-      assetBaseUrl: 'https://svt1.dchai.cn',
-      apiKey: 'token-2',
-      defaultOutputFormat: 'image/png',
-    });
+    expect(providers).toEqual([]);
   });
 
   it('normalizes openai-image providers into openapi-style connection fields', () => {
@@ -117,29 +108,21 @@ describe('customProviderConfig', () => {
     );
   });
 
-  it('reports missing xais-task connection fields', () => {
+  it('reports missing openapi connection fields', () => {
     expect(
       validateCustomProviders([
         {
-          id: 'gateway-xais',
-          name: 'Xais Gateway',
-          protocol: 'xais-task',
-          connection: {
-            xaisTask: {
-              submitBaseUrl: '',
-              waitBaseUrl: '',
-              assetBaseUrl: '',
-              apiKey: '',
-            },
-          },
+          id: 'gateway-openapi',
+          name: 'OpenAPI Gateway',
+          protocol: 'openapi',
+          baseUrl: '',
+          apiKey: '',
           models: [],
         } as unknown as never,
       ])
     ).toEqual([
-      'provider[0].connection.xaisTask.submitBaseUrl',
-      'provider[0].connection.xaisTask.waitBaseUrl',
-      'provider[0].connection.xaisTask.assetBaseUrl',
-      'provider[0].connection.xaisTask.apiKey',
+      'provider[0].baseUrl',
+      'provider[0].apiKey',
       'provider[0].models',
     ]);
   });

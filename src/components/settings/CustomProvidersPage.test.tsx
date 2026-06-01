@@ -14,7 +14,6 @@ vi.mock('react-i18next', () => ({
         'settings.customProvidersEmpty': 'No custom providers yet. Use the button above to add one.',
         'settings.customProviderProtocol': 'Access Protocol',
         'settings.customProviderProtocolOpenapi': 'OpenAPI Compatible',
-        'settings.customProviderProtocolXaisTask': 'XAIS Task',
         'settings.customProviderProtocolOpenaiImage': 'OpenAI Image',
         'settings.customProviderAvailableModels': 'Available Models',
         'settings.customProviderNoEnabledModels': 'No enabled models',
@@ -42,31 +41,6 @@ const openApiProvider: CustomProviderConfig = {
       displayName: 'Disabled Model',
       remoteModelId: 'disabled',
       enabled: false,
-    },
-  ],
-};
-
-const xaisTaskProvider: CustomProviderConfig = {
-  id: 'gateway-b',
-  name: 'Async Gateway',
-  protocol: 'xais-task',
-  baseUrl: '',
-  apiKey: '',
-  connection: {
-    xaisTask: {
-      submitBaseUrl: 'https://api.example.com/submit',
-      waitBaseUrl: 'https://api.example.com/wait',
-      assetBaseUrl: 'https://api.example.com/assets',
-      apiKey: 'token-2',
-      defaultOutputFormat: 'image/png',
-    },
-  },
-  models: [
-    {
-      id: 'model-async',
-      displayName: 'Async Worker',
-      remoteModelId: 'async-worker',
-      enabled: true,
     },
   ],
 };
@@ -125,7 +99,7 @@ describe('CustomProvidersPage', () => {
   it('renders protocol and enabled model summaries for each supplier row', () => {
     render(
       <CustomProvidersPage
-        providers={[openApiProvider, xaisTaskProvider, openAiImageProvider]}
+        providers={[openApiProvider, openAiImageProvider]}
         onAdd={vi.fn()}
         onEdit={vi.fn()}
         onDelete={vi.fn()}
@@ -138,13 +112,6 @@ describe('CustomProvidersPage', () => {
     );
     expect(screen.getByText('Acme Gateway').parentElement).toHaveTextContent(
       'Available Models: Nano Banana Pro 2K'
-    );
-    expect(screen.getByText('Async Gateway')).toBeInTheDocument();
-    expect(screen.getByText('Async Gateway').parentElement).toHaveTextContent(
-      'Access Protocol: XAIS Task'
-    );
-    expect(screen.getByText('Async Gateway').parentElement).toHaveTextContent(
-      'Available Models: Async Worker'
     );
     expect(screen.getByText('OpenAI Images')).toBeInTheDocument();
     expect(screen.getByText('OpenAI Images').parentElement).toHaveTextContent(

@@ -22,7 +22,6 @@ static REGISTRY: std::sync::OnceLock<ProviderRegistry> = std::sync::OnceLock::ne
 static ACTIVE_NON_RESUMABLE_JOB_IDS: std::sync::OnceLock<Arc<RwLock<HashSet<String>>>> =
     std::sync::OnceLock::new();
 const CUSTOM_OPENAPI_PROVIDER_ID: &str = "openapi_compat";
-const CUSTOM_XAIS_TASK_PROVIDER_ID: &str = "xais_task";
 const CUSTOM_OPENAI_IMAGE_PROVIDER_ID: &str = "openai_image";
 
 fn get_registry() -> &'static ProviderRegistry {
@@ -211,7 +210,10 @@ fn touch_generation_job(app: &AppHandle, job_id: &str) -> Result<(), String> {
     Ok(())
 }
 
-fn get_generation_job(app: &AppHandle, job_id: &str) -> Result<Option<GenerationJobRecord>, String> {
+fn get_generation_job(
+    app: &AppHandle,
+    job_id: &str,
+) -> Result<Option<GenerationJobRecord>, String> {
     let conn = open_db(app)?;
     let mut stmt = conn
         .prepare(
@@ -284,12 +286,11 @@ fn is_custom_openapi_runtime(runtime: Option<&crate::ai::RuntimeProviderConfig>)
     matches!(resolve_custom_provider_protocol(runtime), Some("openapi"))
 }
 
-fn is_custom_xais_task_runtime(runtime: Option<&crate::ai::RuntimeProviderConfig>) -> bool {
-    matches!(resolve_custom_provider_protocol(runtime), Some("xais-task"))
-}
-
 fn is_custom_openai_image_runtime(runtime: Option<&crate::ai::RuntimeProviderConfig>) -> bool {
-    matches!(resolve_custom_provider_protocol(runtime), Some("openai-image"))
+    matches!(
+        resolve_custom_provider_protocol(runtime),
+        Some("openai-image")
+    )
 }
 
 fn normalize_action(action: Option<&str>) -> &'static str {
@@ -368,7 +369,10 @@ pub async fn submit_generate_image_job(
                 }
             };
             if let Err(error) = update_result {
-                info!("Failed to update custom openai-image generation job: {}", error);
+                info!(
+                    "Failed to update custom openai-image generation job: {}",
+                    error
+                );
             }
             let mut active_set = active_non_resumable_job_ids().write().await;
             active_set.remove(spawned_job_id.as_str());
@@ -429,48 +433,6 @@ pub async fn submit_generate_image_job(
             active_set.remove(spawned_job_id.as_str());
         });
 
-        return Ok(job_id);
-    }
-
-    if is_custom_xais_task_runtime(req.provider_runtime.as_ref()) {
-        let runtime = req
-            .provider_runtime
-            .clone()
-            .ok_or_else(|| "Missing custom provider runtime config".to_string())?;
-
-        match crate::ai::providers::xais_task::submit_task(&req, &runtime)
-            .await
-            .map_err(|error| error.to_string())?
-        {
-            ProviderTaskSubmission::Succeeded(image_source) => {
-                insert_generation_job(
-                    &app,
-                    job_id.as_str(),
-                    CUSTOM_XAIS_TASK_PROVIDER_ID,
-                    "succeeded",
-                    true,
-                    None,
-                    serde_json::to_string(&runtime).ok().as_deref(),
-                    Some(image_source.as_str()),
-                    None,
-                )?;
-            }
-            ProviderTaskSubmission::Queued(handle) => {
-                let runtime_json =
-                    serde_json::to_string(&runtime).map_err(|error| error.to_string())?;
-                insert_generation_job(
-                    &app,
-                    job_id.as_str(),
-                    CUSTOM_XAIS_TASK_PROVIDER_ID,
-                    "running",
-                    true,
-                    Some(handle.task_id.as_str()),
-                    Some(runtime_json.as_str()),
-                    None,
-                    None,
-                )?;
-            }
-        }
         return Ok(job_id);
     }
 
@@ -610,92 +572,6 @@ pub async fn get_generate_image_job(
         return Ok(dto_from_record(&record));
     }
 
-    if record.provider_id == CUSTOM_XAIS_TASK_PROVIDER_ID {
-        let Some(task_id) = record.external_task_id.clone() else {
-            let message = "missing external task id".to_string();
-            update_generation_job(
-                &app,
-                record.job_id.as_str(),
-                "failed",
-                None,
-                Some(message.as_str()),
-            )?;
-            record.status = "failed".to_string();
-            record.error = Some(message);
-            return Ok(dto_from_record(&record));
-        };
-
-        let Some(runtime_json) = record.external_task_meta_json.as_deref() else {
-            let message = "missing custom xais-task runtime metadata".to_string();
-            update_generation_job(
-                &app,
-                record.job_id.as_str(),
-                "failed",
-                None,
-                Some(message.as_str()),
-            )?;
-            record.status = "failed".to_string();
-            record.error = Some(message);
-            return Ok(dto_from_record(&record));
-        };
-
-        let runtime = serde_json::from_str::<crate::ai::RuntimeProviderConfig>(runtime_json)
-            .map_err(|error| format!("Failed to parse custom xais-task runtime metadata: {}", error))?;
-
-        match crate::ai::providers::xais_task::poll_task(
-            ProviderTaskHandle {
-                task_id,
-                metadata: None,
-            },
-            &runtime,
-        )
-        .await
-        {
-            Ok(ProviderTaskPollResult::Running) => {
-                let _ = touch_generation_job(&app, record.job_id.as_str());
-                return Ok(dto_from_record(&record));
-            }
-            Ok(ProviderTaskPollResult::Succeeded(image_source)) => {
-                update_generation_job(
-                    &app,
-                    record.job_id.as_str(),
-                    "succeeded",
-                    Some(image_source.as_str()),
-                    None,
-                )?;
-                return Ok(GenerationJobStatusDto {
-                    job_id: record.job_id,
-                    status: "succeeded".to_string(),
-                    result: Some(image_source),
-                    error: None,
-                });
-            }
-            Ok(ProviderTaskPollResult::Failed(message)) | Err(AIError::TaskFailed(message)) => {
-                update_generation_job(
-                    &app,
-                    record.job_id.as_str(),
-                    "failed",
-                    None,
-                    Some(message.as_str()),
-                )?;
-                return Ok(GenerationJobStatusDto {
-                    job_id: record.job_id,
-                    status: "failed".to_string(),
-                    result: None,
-                    error: Some(message),
-                });
-            }
-            Err(error) => {
-                return Ok(GenerationJobStatusDto {
-                    job_id: record.job_id,
-                    status: "running".to_string(),
-                    result: None,
-                    error: Some(error.to_string()),
-                });
-            }
-        }
-    }
-
     let provider = get_registry()
         .get_provider(record.provider_id.as_str())
         .cloned()
@@ -822,16 +698,6 @@ pub async fn generate_image(request: GenerateRequestDto) -> Result<String, Strin
             .map_err(|error| error.to_string());
     }
 
-    if is_custom_xais_task_runtime(req.provider_runtime.as_ref()) {
-        let runtime = req
-            .provider_runtime
-            .clone()
-            .ok_or_else(|| "Missing custom provider runtime config".to_string())?;
-        return crate::ai::providers::xais_task::generate(&req, &runtime)
-            .await
-            .map_err(|error| error.to_string());
-    }
-
     let registry = get_registry();
     let provider = registry
         .resolve_provider_for_model(&req.model)
@@ -859,10 +725,6 @@ mod tests {
             protocol: Some("openai-image".to_string()),
             base_url: Some("https://api.openai.com/v1".to_string()),
             api_key: Some("sk-openai".to_string()),
-            submit_base_url: None,
-            wait_base_url: None,
-            asset_base_url: None,
-            default_output_format: None,
             remote_model_id: Some("gpt-image-1".to_string()),
         };
 

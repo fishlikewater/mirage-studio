@@ -8,7 +8,7 @@ export interface ModelProviderDefinition {
   label: string;
 }
 
-export type RuntimeCustomProviderProtocol = 'openapi' | 'xais-task' | 'openai-image';
+export type RuntimeCustomProviderProtocol = 'openapi' | 'openai-image';
 
 export interface RuntimeProviderConfig {
   kind: 'builtin' | 'custom-provider';
@@ -17,10 +17,6 @@ export interface RuntimeProviderConfig {
   protocol?: RuntimeCustomProviderProtocol;
   baseUrl?: string;
   apiKey?: string;
-  submitBaseUrl?: string;
-  waitBaseUrl?: string;
-  assetBaseUrl?: string;
-  defaultOutputFormat?: 'image/png' | 'image/jpeg';
   remoteModelId?: string;
 }
 

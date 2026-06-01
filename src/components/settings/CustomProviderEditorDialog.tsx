@@ -7,10 +7,8 @@ import {
   createCustomProviderDraft,
   createCustomProviderModelDraft,
   validateCustomProviders,
-  type CustomProviderConnectionConfig,
   type CustomProviderConfig,
   type OpenApiConnectionConfig,
-  type XaisTaskConnectionConfig,
 } from '@/stores/customProviderConfig';
 
 interface CustomProviderEditorDialogProps {
@@ -28,9 +26,6 @@ function cloneProvider(provider: CustomProviderConfig): CustomProviderConfig {
       ? {
           openapi: provider.connection.openapi
             ? { ...provider.connection.openapi }
-            : undefined,
-          xaisTask: provider.connection.xaisTask
-            ? { ...provider.connection.xaisTask }
             : undefined,
         }
       : undefined,
@@ -58,14 +53,6 @@ function syncOpenApiConnection(
   };
 }
 
-const EMPTY_XAIS_TASK_CONNECTION: XaisTaskConnectionConfig = {
-  submitBaseUrl: '',
-  waitBaseUrl: '',
-  assetBaseUrl: '',
-  apiKey: '',
-  defaultOutputFormat: 'image/png',
-};
-
 function resolveDraftOpenApiConnection(
   draft: CustomProviderConfig
 ): OpenApiConnectionConfig {
@@ -75,30 +62,10 @@ function resolveDraftOpenApiConnection(
   };
 }
 
-function resolveDraftXaisTaskConnection(
-  draft: CustomProviderConfig
-): XaisTaskConnectionConfig {
-  return {
-    ...EMPTY_XAIS_TASK_CONNECTION,
-    ...draft.connection?.xaisTask,
-  };
-}
-
 function ensureProtocolConnection(
   draft: CustomProviderConfig,
   protocol: CustomProviderConfig['protocol']
 ): CustomProviderConfig {
-  if (protocol === 'xais-task') {
-    return {
-      ...draft,
-      protocol,
-      connection: {
-        ...draft.connection,
-        xaisTask: resolveDraftXaisTaskConnection(draft),
-      } satisfies CustomProviderConnectionConfig,
-    };
-  }
-
   const openapi = resolveDraftOpenApiConnection(draft);
   return {
     ...draft,
@@ -108,22 +75,6 @@ function ensureProtocolConnection(
     connection: {
       ...draft.connection,
       openapi,
-    } satisfies CustomProviderConnectionConfig,
-  };
-}
-
-function syncXaisTaskConnection(
-  draft: CustomProviderConfig,
-  patch: Partial<XaisTaskConnectionConfig>
-): CustomProviderConfig {
-  return {
-    ...draft,
-    connection: {
-      ...draft.connection,
-      xaisTask: {
-        ...resolveDraftXaisTaskConnection(draft),
-        ...patch,
-      },
     },
   };
 }
@@ -159,7 +110,6 @@ export function CustomProviderEditorDialog({
   const [revealedApiKey, setRevealedApiKey] = useState(false);
   const validationErrors = useMemo(() => buildDialogValidationErrors(draft), [draft]);
   const openApiConnection = useMemo(() => resolveDraftOpenApiConnection(draft), [draft]);
-  const xaisTaskConnection = useMemo(() => resolveDraftXaisTaskConnection(draft), [draft]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -244,7 +194,6 @@ export function CustomProviderEditorDialog({
                   className="h-10 text-sm"
                 >
                   <option value="openapi">{t('settings.customProviderProtocolOpenapi')}</option>
-                  <option value="xais-task">{t('settings.customProviderProtocolXaisTask')}</option>
                   <option value="openai-image">{t('settings.customProviderProtocolOpenaiImage')}</option>
                 </UiSelect>
               </label>
@@ -256,188 +205,57 @@ export function CustomProviderEditorDialog({
                   {t('settings.customProviderConnectionSection')}
                 </div>
                 <div className="mt-1 text-[11px] text-text-muted">
-                  {draft.protocol === 'xais-task'
-                    ? t('settings.customProviderConnectionXaisTaskDesc')
-                    : draft.protocol === 'openai-image'
+                  {draft.protocol === 'openai-image'
                       ? t('settings.customProviderConnectionOpenaiImageDesc')
                     : t('settings.customProviderConnectionOpenapiDesc')}
                 </div>
               </div>
 
-              {draft.protocol === 'xais-task' ? (
-                <>
-                  <label className="space-y-1">
-                    <span className="text-xs font-medium text-text-dark">
-                      {t('settings.customProviderXaisSubmitBaseUrl')}
-                    </span>
-                    <UiInput
-                      aria-label={t('settings.customProviderXaisSubmitBaseUrl')}
-                      value={xaisTaskConnection.submitBaseUrl}
-                      onChange={(event) =>
-                        setDraft((current) =>
-                          syncXaisTaskConnection(current, {
-                            submitBaseUrl: event.target.value,
-                          })
-                        )
-                      }
-                      className={
-                        hasFieldError(validationErrors, 'provider[0].connection.xaisTask.submitBaseUrl')
-                          ? 'border-red-400/60'
-                          : ''
-                      }
-                    />
-                  </label>
+              <label className="space-y-1">
+                <span className="text-xs font-medium text-text-dark">
+                  {t('settings.customProviderBaseUrl')}
+                </span>
+                <UiInput
+                  aria-label={t('settings.customProviderBaseUrl')}
+                  value={openApiConnection.baseUrl}
+                  onChange={(event) =>
+                    setDraft((current) =>
+                      syncOpenApiConnection(current, {
+                        baseUrl: event.target.value,
+                      })
+                    )
+                  }
+                  className={hasFieldError(validationErrors, 'provider[0].baseUrl') ? 'border-red-400/60' : ''}
+                />
+              </label>
 
-                  <div className="grid gap-3 md:grid-cols-2">
-                    <label className="space-y-1">
-                      <span className="text-xs font-medium text-text-dark">
-                        {t('settings.customProviderXaisWaitBaseUrl')}
-                      </span>
-                      <UiInput
-                        aria-label={t('settings.customProviderXaisWaitBaseUrl')}
-                        value={xaisTaskConnection.waitBaseUrl}
-                        onChange={(event) =>
-                          setDraft((current) =>
-                            syncXaisTaskConnection(current, {
-                              waitBaseUrl: event.target.value,
-                            })
-                          )
-                        }
-                        className={
-                          hasFieldError(validationErrors, 'provider[0].connection.xaisTask.waitBaseUrl')
-                            ? 'border-red-400/60'
-                            : ''
-                        }
-                      />
-                    </label>
-
-                    <label className="space-y-1">
-                      <span className="text-xs font-medium text-text-dark">
-                        {t('settings.customProviderXaisAssetBaseUrl')}
-                      </span>
-                      <UiInput
-                        aria-label={t('settings.customProviderXaisAssetBaseUrl')}
-                        value={xaisTaskConnection.assetBaseUrl}
-                        onChange={(event) =>
-                          setDraft((current) =>
-                            syncXaisTaskConnection(current, {
-                              assetBaseUrl: event.target.value,
-                            })
-                          )
-                        }
-                        className={
-                          hasFieldError(validationErrors, 'provider[0].connection.xaisTask.assetBaseUrl')
-                            ? 'border-red-400/60'
-                            : ''
-                        }
-                      />
-                    </label>
-                  </div>
-
-                  <div className="grid gap-3 md:grid-cols-2">
-                    <label className="space-y-1">
-                      <span className="text-xs font-medium text-text-dark">
-                        {t('settings.customProviderApiKey')}
-                      </span>
-                      <div className="relative">
-                        <UiInput
-                          aria-label={t('settings.customProviderApiKey')}
-                          type={revealedApiKey ? 'text' : 'password'}
-                          value={xaisTaskConnection.apiKey}
-                          onChange={(event) =>
-                            setDraft((current) =>
-                              syncXaisTaskConnection(current, {
-                                apiKey: event.target.value,
-                              })
-                            )
-                          }
-                          className={`pr-10 ${
-                            hasFieldError(validationErrors, 'provider[0].connection.xaisTask.apiKey')
-                              ? 'border-red-400/60'
-                              : ''
-                          }`}
-                        />
-                        <button
-                          type="button"
-                          className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-text-muted transition-colors hover:bg-bg-dark"
-                          onClick={() => setRevealedApiKey((current) => !current)}
-                        >
-                          {revealedApiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                        </button>
-                      </div>
-                    </label>
-
-                    <label className="space-y-1">
-                      <span className="text-xs font-medium text-text-dark">
-                        {t('settings.customProviderDefaultOutputFormat')}
-                      </span>
-                      <UiSelect
-                        aria-label={t('settings.customProviderDefaultOutputFormat')}
-                        value={xaisTaskConnection.defaultOutputFormat ?? 'image/png'}
-                        onChange={(event) =>
-                          setDraft((current) =>
-                            syncXaisTaskConnection(current, {
-                              defaultOutputFormat: event.target.value as XaisTaskConnectionConfig['defaultOutputFormat'],
-                            })
-                          )
-                        }
-                        className="h-10 text-sm"
-                      >
-                        <option value="image/png">{t('settings.customProviderOutputFormatPng')}</option>
-                        <option value="image/jpeg">{t('settings.customProviderOutputFormatJpeg')}</option>
-                      </UiSelect>
-                    </label>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <label className="space-y-1">
-                    <span className="text-xs font-medium text-text-dark">
-                      {t('settings.customProviderBaseUrl')}
-                    </span>
-                    <UiInput
-                      aria-label={t('settings.customProviderBaseUrl')}
-                      value={openApiConnection.baseUrl}
-                      onChange={(event) =>
-                        setDraft((current) =>
-                          syncOpenApiConnection(current, {
-                            baseUrl: event.target.value,
-                          })
-                        )
-                      }
-                      className={hasFieldError(validationErrors, 'provider[0].baseUrl') ? 'border-red-400/60' : ''}
-                    />
-                  </label>
-
-                  <label className="space-y-1">
-                    <span className="text-xs font-medium text-text-dark">
-                      {t('settings.customProviderApiKey')}
-                    </span>
-                    <div className="relative">
-                      <UiInput
-                        aria-label={t('settings.customProviderApiKey')}
-                        type={revealedApiKey ? 'text' : 'password'}
-                        value={openApiConnection.apiKey}
-                        onChange={(event) =>
-                          setDraft((current) =>
-                            syncOpenApiConnection(current, {
-                              apiKey: event.target.value,
-                            })
-                          )
-                        }
-                        className={`pr-10 ${hasFieldError(validationErrors, 'provider[0].apiKey') ? 'border-red-400/60' : ''}`}
-                      />
-                      <button
-                        type="button"
-                        className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-text-muted transition-colors hover:bg-bg-dark"
-                        onClick={() => setRevealedApiKey((current) => !current)}
-                      >
-                        {revealedApiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                      </button>
-                    </div>
-                  </label>
-                </>
-              )}
+              <label className="space-y-1">
+                <span className="text-xs font-medium text-text-dark">
+                  {t('settings.customProviderApiKey')}
+                </span>
+                <div className="relative">
+                  <UiInput
+                    aria-label={t('settings.customProviderApiKey')}
+                    type={revealedApiKey ? 'text' : 'password'}
+                    value={openApiConnection.apiKey}
+                    onChange={(event) =>
+                      setDraft((current) =>
+                        syncOpenApiConnection(current, {
+                          apiKey: event.target.value,
+                        })
+                      )
+                    }
+                    className={`pr-10 ${hasFieldError(validationErrors, 'provider[0].apiKey') ? 'border-red-400/60' : ''}`}
+                  />
+                  <button
+                    type="button"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-text-muted transition-colors hover:bg-bg-dark"
+                    onClick={() => setRevealedApiKey((current) => !current)}
+                  >
+                    {revealedApiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+              </label>
             </div>
 
             <div className="space-y-3 rounded-lg border border-border-dark bg-bg-dark/60 p-3">

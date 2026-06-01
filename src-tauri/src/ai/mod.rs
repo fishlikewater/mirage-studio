@@ -16,10 +16,6 @@ pub struct RuntimeProviderConfig {
     pub protocol: Option<String>,
     pub base_url: Option<String>,
     pub api_key: Option<String>,
-    pub submit_base_url: Option<String>,
-    pub wait_base_url: Option<String>,
-    pub asset_base_url: Option<String>,
-    pub default_output_format: Option<String>,
     pub remote_model_id: Option<String>,
 }
 
@@ -63,25 +59,24 @@ pub trait AIProvider: Send + Sync {
         Vec::new()
     }
 
-    async fn set_api_key(&self, _api_key: String) -> Result<(), AIError> {
-        Err(AIError::Provider(format!(
-            "Provider '{}' does not support API key configuration",
-            self.name()
-        )))
-    }
-
     fn supports_task_resume(&self) -> bool {
         false
     }
 
-    async fn submit_task(&self, _request: GenerateRequest) -> Result<ProviderTaskSubmission, AIError> {
+    async fn submit_task(
+        &self,
+        _request: GenerateRequest,
+    ) -> Result<ProviderTaskSubmission, AIError> {
         Err(AIError::Provider(format!(
             "Provider '{}' does not support resumable task submission",
             self.name()
         )))
     }
 
-    async fn poll_task(&self, _handle: ProviderTaskHandle) -> Result<ProviderTaskPollResult, AIError> {
+    async fn poll_task(
+        &self,
+        _handle: ProviderTaskHandle,
+    ) -> Result<ProviderTaskPollResult, AIError> {
         Err(AIError::Provider(format!(
             "Provider '{}' does not support resumable task polling",
             self.name()

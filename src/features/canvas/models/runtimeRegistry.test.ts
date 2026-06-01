@@ -26,33 +26,6 @@ const customProviders: CustomProviderConfig[] = [
   },
 ];
 
-const xaisProviders: CustomProviderConfig[] = [
-  {
-    id: 'gateway-xais',
-    name: 'Xais Gateway',
-    protocol: 'xais-task',
-    baseUrl: '',
-    apiKey: '',
-    connection: {
-      xaisTask: {
-        submitBaseUrl: 'https://sg2c.dchai.cn',
-        waitBaseUrl: 'https://sg2.dchai.cn',
-        assetBaseUrl: 'https://svt1.dchai.cn',
-        apiKey: 'token-xais',
-        defaultOutputFormat: 'image/png',
-      },
-    },
-    models: [
-      {
-        id: 'model-main',
-        displayName: 'Nano Banana Xais',
-        remoteModelId: 'Nano_Banana_Pro_2K_0',
-        enabled: true,
-      },
-    ],
-  },
-];
-
 const openAiImageProviders: CustomProviderConfig[] = [
   {
     id: 'openai-images',
@@ -151,31 +124,6 @@ describe('runtimeRegistry', () => {
     expect(getRuntimeImageModel('custom-provider:missing:model', customProviders).providerId).toBe(
       'custom-provider:gateway-a'
     );
-  });
-
-  it('exposes xais-task runtime provider metadata', () => {
-    const providers = listRuntimeModelProviders(xaisProviders);
-    const runtimeModels = listRuntimeImageModels(xaisProviders);
-    const xaisModel = runtimeModels.find(
-      (model) => model.id === 'custom-provider:gateway-xais:model-main'
-    );
-
-    expect(providers[providers.length - 1]).toMatchObject({
-      id: 'custom-provider:gateway-xais',
-      runtimeKind: 'custom-provider',
-      configured: true,
-      protocol: 'xais-task',
-    });
-    expect(xaisModel?.runtimeProvider).toMatchObject({
-      kind: 'custom-provider',
-      protocol: 'xais-task',
-      apiKey: 'token-xais',
-      submitBaseUrl: 'https://sg2c.dchai.cn',
-      waitBaseUrl: 'https://sg2.dchai.cn',
-      assetBaseUrl: 'https://svt1.dchai.cn',
-      defaultOutputFormat: 'image/png',
-      remoteModelId: 'Nano_Banana_Pro_2K_0',
-    });
   });
 
   it('exposes openai-image runtime provider metadata', () => {

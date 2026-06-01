@@ -87,9 +87,8 @@ describe('CustomProviderEditorDialog', () => {
     });
   });
 
-  it('switches to xais-task fields and saves protocol-specific connection data', async () => {
+  it('offers only the supported supplier protocols', async () => {
     const user = userEvent.setup();
-    const onSave = vi.fn();
 
     render(
       <CustomProviderEditorDialog
@@ -97,57 +96,15 @@ describe('CustomProviderEditorDialog', () => {
         mode="create"
         initialProvider={null}
         onClose={vi.fn()}
-        onSave={onSave}
+        onSave={vi.fn()}
       />
     );
 
-    await user.click(
-      screen.getByRole('button', { name: 'settings.customProviderProtocol' })
-    );
-    await user.click(screen.getByRole('option', { name: 'settings.customProviderProtocolXaisTask' }));
+    await user.click(screen.getByRole('button', { name: 'settings.customProviderProtocol' }));
 
-    expect(await screen.findByLabelText('settings.customProviderXaisSubmitBaseUrl')).toBeInTheDocument();
-    expect(screen.queryByLabelText('settings.customProviderBaseUrl')).not.toBeInTheDocument();
-
-    await user.type(screen.getByLabelText('settings.customProviderName'), 'Async Gateway');
-    await user.type(
-      screen.getByLabelText('settings.customProviderXaisSubmitBaseUrl'),
-      'https://sg2c.dchai.cn'
-    );
-    await user.type(
-      screen.getByLabelText('settings.customProviderXaisWaitBaseUrl'),
-      'https://sg2.dchai.cn'
-    );
-    await user.type(
-      screen.getByLabelText('settings.customProviderXaisAssetBaseUrl'),
-      'https://svt1.dchai.cn'
-    );
-    await user.type(screen.getByLabelText('settings.customProviderApiKey'), 'token-async');
-    await user.click(
-      screen.getByRole('button', { name: 'settings.customProviderDefaultOutputFormat' })
-    );
-    await user.click(screen.getByRole('option', { name: 'settings.customProviderOutputFormatJpeg' }));
-    await user.type(screen.getByLabelText('settings.customProviderModelName'), 'Nano Banana Pro 2K');
-    await user.type(
-      screen.getByLabelText('settings.customProviderModelId'),
-      'Nano_Banana_Pro_2K_0'
-    );
-    await user.click(screen.getByRole('button', { name: 'common.save' }));
-
-    expect(onSave).toHaveBeenCalledTimes(1);
-    expect(onSave.mock.calls[0][0]).toMatchObject({
-      name: 'Async Gateway',
-      protocol: 'xais-task',
-      connection: {
-        xaisTask: {
-          submitBaseUrl: 'https://sg2c.dchai.cn',
-          waitBaseUrl: 'https://sg2.dchai.cn',
-          assetBaseUrl: 'https://svt1.dchai.cn',
-          apiKey: 'token-async',
-          defaultOutputFormat: 'image/jpeg',
-        },
-      },
-    });
+    expect(screen.getByRole('option', { name: 'settings.customProviderProtocolOpenapi' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'settings.customProviderProtocolOpenaiImage' })).toBeInTheDocument();
+    expect(screen.getAllByRole('option')).toHaveLength(2);
   });
 
   it('switches to openai-image fields and saves openapi-style connection data', async () => {

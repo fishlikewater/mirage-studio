@@ -20,9 +20,6 @@ function buildModelSummary(provider: CustomProviderConfig, emptyLabel: string): 
 }
 
 function buildProtocolSummary(provider: CustomProviderConfig, t: (key: string) => string): string {
-  if (provider.protocol === 'xais-task') {
-    return t('settings.customProviderProtocolXaisTask');
-  }
   if (provider.protocol === 'openai-image') {
     return t('settings.customProviderProtocolOpenaiImage');
   }

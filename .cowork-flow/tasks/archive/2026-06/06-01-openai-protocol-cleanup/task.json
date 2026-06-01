@@ -1,0 +1,21 @@
+{
+  "id": "06-01-openai-protocol-cleanup",
+  "name": "06-01-openai-protocol-cleanup",
+  "title": "Remove XAIS Task and tune OpenAI protocols",
+  "description": "Remove built-in API remnants, remove XAIS Task custom-provider protocol, and align OpenAI custom provider protocols with official docs.",
+  "status": "completed",
+  "dev_type": null,
+  "scope": null,
+  "priority": "P2",
+  "creator": "zhangxiang",
+  "assignee": "zhangxiang",
+  "createdAt": "2026-06-01",
+  "completedAt": "2026-06-01",
+  "commit": null,
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [],
+  "notes": "",
+  "meta": {}
+}

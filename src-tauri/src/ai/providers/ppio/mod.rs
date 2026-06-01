@@ -34,16 +34,6 @@ impl PPIOProvider {
             model_registry: PPIOModelRegistry::new(),
         }
     }
-
-    pub async fn set_api_key(&self, api_key: String) {
-        let mut key = self.api_key.write().await;
-        *key = Some(api_key);
-    }
-
-    pub async fn get_api_key(&self) -> Option<String> {
-        let key = self.api_key.read().await;
-        key.clone()
-    }
 }
 
 impl Default for PPIOProvider {
@@ -64,11 +54,6 @@ impl AIProvider for PPIOProvider {
 
     fn list_models(&self) -> Vec<String> {
         self.model_registry.list_models()
-    }
-
-    async fn set_api_key(&self, api_key: String) -> Result<(), AIError> {
-        PPIOProvider::set_api_key(self, api_key).await;
-        Ok(())
     }
 
     async fn generate(&self, request: crate::ai::GenerateRequest) -> Result<String, AIError> {

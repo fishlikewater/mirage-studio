@@ -313,12 +313,6 @@ impl AIProvider for GrsaiProvider {
         ]
     }
 
-    async fn set_api_key(&self, api_key: String) -> Result<(), AIError> {
-        let mut key = self.api_key.write().await;
-        *key = Some(api_key);
-        Ok(())
-    }
-
     fn supports_task_resume(&self) -> bool {
         true
     }

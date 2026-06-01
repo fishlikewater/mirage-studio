@@ -1,4 +1,4 @@
-export type CustomProviderProtocol = 'openapi' | 'xais-task' | 'openai-image';
+export type CustomProviderProtocol = 'openapi' | 'openai-image';
 
 export interface CustomProviderModelConfig {
   id: string;
@@ -12,17 +12,8 @@ export interface OpenApiConnectionConfig {
   apiKey: string;
 }
 
-export interface XaisTaskConnectionConfig {
-  submitBaseUrl: string;
-  waitBaseUrl: string;
-  assetBaseUrl: string;
-  apiKey: string;
-  defaultOutputFormat?: 'image/png' | 'image/jpeg';
-}
-
 export interface CustomProviderConnectionConfig {
   openapi?: OpenApiConnectionConfig;
-  xaisTask?: XaisTaskConnectionConfig;
 }
 
 export interface CustomProviderConfig {
@@ -64,17 +55,11 @@ function preferTrimmed(
 }
 
 function normalizeProtocol(value: string | null | undefined): CustomProviderProtocol {
-  if (value === 'xais-task' || value === 'openai-image') {
+  if (value === 'openai-image') {
     return value;
   }
 
   return DEFAULT_PROTOCOL;
-}
-
-function normalizeOutputFormat(
-  value: string | null | undefined
-): XaisTaskConnectionConfig['defaultOutputFormat'] {
-  return value === 'image/jpeg' ? 'image/jpeg' : 'image/png';
 }
 
 function normalizeOpenApiConnection(
@@ -90,31 +75,9 @@ function normalizeOpenApiConnection(
   };
 }
 
-function normalizeXaisTaskConnection(
-  provider: Partial<CustomProviderConfig> | Record<string, unknown>
-): XaisTaskConnectionConfig {
-  const xaisTask = (provider.connection as { xaisTask?: XaisTaskConnectionConfig } | undefined)
-    ?.xaisTask;
-
-  return {
-    submitBaseUrl: normalizeBaseUrl(xaisTask?.submitBaseUrl),
-    waitBaseUrl: normalizeBaseUrl(xaisTask?.waitBaseUrl),
-    assetBaseUrl: normalizeBaseUrl(xaisTask?.assetBaseUrl),
-    apiKey: trim(xaisTask?.apiKey),
-    defaultOutputFormat: normalizeOutputFormat(xaisTask?.defaultOutputFormat),
-  };
-}
-
 function normalizeConnection(
-  provider: Partial<CustomProviderConfig> | Record<string, unknown>,
-  protocol: CustomProviderProtocol
+  provider: Partial<CustomProviderConfig> | Record<string, unknown>
 ): CustomProviderConnectionConfig {
-  if (protocol === 'xais-task') {
-    return {
-      xaisTask: normalizeXaisTaskConnection(provider),
-    };
-  }
-
   return {
     openapi: normalizeOpenApiConnection(provider),
   };
@@ -184,26 +147,10 @@ export function resolveOpenApiConnection(
   return normalizeOpenApiConnection(provider);
 }
 
-export function resolveXaisTaskConnection(
-  provider: Pick<CustomProviderConfig, 'connection'>
-): XaisTaskConnectionConfig {
-  return normalizeXaisTaskConnection(provider);
-}
-
 export function isCustomProviderConfigured(provider: CustomProviderConfig): boolean {
   const hasEnabledModel = provider.models.some((model) => model.enabled);
   if (!hasEnabledModel) {
     return false;
-  }
-
-  if (provider.protocol === 'xais-task') {
-    const connection = resolveXaisTaskConnection(provider);
-    return (
-      connection.submitBaseUrl.length > 0 &&
-      connection.waitBaseUrl.length > 0 &&
-      connection.assetBaseUrl.length > 0 &&
-      connection.apiKey.length > 0
-    );
   }
 
   const connection = resolveOpenApiConnection(provider);
@@ -216,9 +163,13 @@ export function normalizeCustomProviders(
   const seen = new Set<string>();
 
   return (input ?? [])
+    .filter((provider) => {
+      const protocol = (provider as { protocol?: string }).protocol;
+      return !protocol || protocol === 'openapi' || protocol === 'openai-image';
+    })
     .map((provider) => {
       const protocol = normalizeProtocol(provider.protocol);
-      const connection = normalizeConnection(provider, protocol);
+      const connection = normalizeConnection(provider);
       const openapiConnection = connection.openapi;
 
       return {
@@ -249,28 +200,12 @@ export function validateCustomProviders(providers: CustomProviderConfig[]): stri
       errors.push(`provider[${providerIndex}].name`);
     }
 
-    if (provider.protocol === 'xais-task') {
-      const xaisTask = resolveXaisTaskConnection(provider);
-      if (!normalizeBaseUrl(xaisTask.submitBaseUrl)) {
-        errors.push(`provider[${providerIndex}].connection.xaisTask.submitBaseUrl`);
-      }
-      if (!normalizeBaseUrl(xaisTask.waitBaseUrl)) {
-        errors.push(`provider[${providerIndex}].connection.xaisTask.waitBaseUrl`);
-      }
-      if (!normalizeBaseUrl(xaisTask.assetBaseUrl)) {
-        errors.push(`provider[${providerIndex}].connection.xaisTask.assetBaseUrl`);
-      }
-      if (!trim(xaisTask.apiKey)) {
-        errors.push(`provider[${providerIndex}].connection.xaisTask.apiKey`);
-      }
-    } else {
-      const openapi = resolveOpenApiConnection(provider);
-      if (!normalizeBaseUrl(openapi.baseUrl)) {
-        errors.push(`provider[${providerIndex}].baseUrl`);
-      }
-      if (!trim(openapi.apiKey)) {
-        errors.push(`provider[${providerIndex}].apiKey`);
-      }
+    const openapi = resolveOpenApiConnection(provider);
+    if (!normalizeBaseUrl(openapi.baseUrl)) {
+      errors.push(`provider[${providerIndex}].baseUrl`);
+    }
+    if (!trim(openapi.apiKey)) {
+      errors.push(`provider[${providerIndex}].apiKey`);
     }
 
     if (!provider.models.some((model) => model.enabled)) {

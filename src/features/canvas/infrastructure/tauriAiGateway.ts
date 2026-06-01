@@ -9,15 +9,12 @@ import type { AiGateway, GenerateImagePayload } from '../application/ports';
 
 async function normalizeReferenceImages(payload: GenerateImagePayload): Promise<string[] | undefined> {
   const isCustomProvider = payload.providerRuntime?.kind === 'custom-provider';
-  const isXaisTask = isCustomProvider && payload.providerRuntime?.protocol === 'xais-task';
   const isKieModel = payload.model.startsWith('kie/');
   const isFalModel = payload.model.startsWith('fal/');
   return payload.referenceImages
     ? await Promise.all(
       payload.referenceImages.map(async (imageUrl) =>
-        isXaisTask
-          ? imageUrl
-          : isCustomProvider || isKieModel || isFalModel
+        isCustomProvider || isKieModel || isFalModel
           ? await imageUrlToDataUrl(imageUrl)
           : await persistImageLocally(imageUrl)
       )

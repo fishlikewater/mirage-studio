@@ -5,6 +5,9 @@ use serde_json::{json, Value};
 use crate::ai::error::AIError;
 use crate::ai::{GenerateRequest, RuntimeProviderConfig};
 
+const OPENAI_EDIT_IMAGE_FORM_FIELD: &str = "image[]";
+const OPENAI_IMAGE_MAX_REFERENCE_IMAGES: usize = 16;
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct OpenAiEditImage {
     pub mime_type: String,
@@ -16,7 +19,9 @@ fn trim(value: Option<&str>) -> String {
 }
 
 fn validate_runtime(runtime: &RuntimeProviderConfig) -> Result<(String, String, String), AIError> {
-    let base_url = trim(runtime.base_url.as_deref()).trim_end_matches('/').to_string();
+    let base_url = trim(runtime.base_url.as_deref())
+        .trim_end_matches('/')
+        .to_string();
     let api_key = trim(runtime.api_key.as_deref());
     let remote_model_id = trim(runtime.remote_model_id.as_deref());
 
@@ -49,6 +54,32 @@ fn build_final_prompt(request: &GenerateRequest) -> String {
     format!("{prompt}\nImage aspect ratio: {aspect_ratio}")
 }
 
+fn resolve_openai_image_size(request: &GenerateRequest) -> String {
+    let explicit_size = request.size.trim();
+    if explicit_size.eq_ignore_ascii_case("auto") || explicit_size.contains('x') {
+        return explicit_size.to_string();
+    }
+
+    let aspect_ratio = request.aspect_ratio.trim();
+    let Some((width, height)) = aspect_ratio.split_once(':') else {
+        return "auto".to_string();
+    };
+    let width = width.trim().parse::<f64>().unwrap_or(1.0);
+    let height = height.trim().parse::<f64>().unwrap_or(1.0);
+    if width <= 0.0 || height <= 0.0 {
+        return "auto".to_string();
+    }
+
+    let ratio = width / height;
+    if ratio > 1.05 {
+        "1536x1024".to_string()
+    } else if ratio < 0.95 {
+        "1024x1536".to_string()
+    } else {
+        "1024x1024".to_string()
+    }
+}
+
 pub fn build_generation_body(
     request: &GenerateRequest,
     runtime: &RuntimeProviderConfig,
@@ -58,18 +89,21 @@ pub fn build_generation_body(
     Ok(json!({
         "model": remote_model_id,
         "prompt": build_final_prompt(request),
+        "size": resolve_openai_image_size(request),
         "n": 1
     }))
 }
 
+fn is_supported_image_mime(mime_type: &str) -> bool {
+    matches!(mime_type, "image/png" | "image/jpeg" | "image/webp")
+}
+
 fn parse_data_url_image(value: &str) -> Result<OpenAiEditImage, AIError> {
-    let (metadata, payload) = value
-        .split_once(',')
-        .ok_or_else(|| {
-            AIError::InvalidRequest(
-                "custom openai-image reference images must be data URLs".to_string(),
-            )
-        })?;
+    let (metadata, payload) = value.split_once(',').ok_or_else(|| {
+        AIError::InvalidRequest(
+            "custom openai-image reference images must be data URLs".to_string(),
+        )
+    })?;
     let metadata = metadata.trim();
     if !metadata.starts_with("data:") || !metadata.ends_with(";base64") {
         return Err(AIError::InvalidRequest(
@@ -85,6 +119,12 @@ fn parse_data_url_image(value: &str) -> Result<OpenAiEditImage, AIError> {
         return Err(AIError::InvalidRequest(
             "custom openai-image reference image missing MIME type".to_string(),
         ));
+    }
+    if !is_supported_image_mime(mime_type) {
+        return Err(AIError::InvalidRequest(format!(
+            "custom openai-image reference image MIME type is not supported by OpenAI Images API: {}",
+            mime_type
+        )));
     }
 
     let bytes = general_purpose::STANDARD
@@ -122,6 +162,12 @@ pub fn collect_edit_images(request: &GenerateRequest) -> Result<Vec<OpenAiEditIm
             "custom openai-image edit requires reference images".to_string(),
         ));
     }
+    if images.len() > OPENAI_IMAGE_MAX_REFERENCE_IMAGES {
+        return Err(AIError::InvalidRequest(format!(
+            "custom openai-image edit supports at most {} reference images",
+            OPENAI_IMAGE_MAX_REFERENCE_IMAGES
+        )));
+    }
 
     Ok(images)
 }
@@ -130,7 +176,6 @@ fn image_extension(mime_type: &str) -> &'static str {
     match mime_type {
         "image/jpeg" => "jpg",
         "image/webp" => "webp",
-        "image/gif" => "gif",
         _ => "png",
     }
 }
@@ -144,6 +189,7 @@ fn build_edit_form(
     let mut form = multipart::Form::new()
         .text("model", remote_model_id)
         .text("prompt", build_final_prompt(request))
+        .text("size", resolve_openai_image_size(request))
         .text("n", "1");
 
     for (index, image) in images.into_iter().enumerate() {
@@ -155,7 +201,7 @@ fn build_edit_form(
         let part = multipart::Part::bytes(image.bytes)
             .file_name(file_name)
             .mime_str(image.mime_type.as_str())?;
-        form = form.part("image[]", part);
+        form = form.part(OPENAI_EDIT_IMAGE_FORM_FIELD, part);
     }
 
     Ok(form)
@@ -232,7 +278,8 @@ mod tests {
     use crate::ai::{GenerateRequest, RuntimeProviderConfig};
 
     use super::{
-        build_generation_body, collect_edit_images, parse_image_response,
+        build_edit_form, build_generation_body, collect_edit_images, parse_image_response,
+        resolve_openai_image_size,
     };
 
     fn runtime() -> RuntimeProviderConfig {
@@ -243,10 +290,6 @@ mod tests {
             protocol: Some("openai-image".to_string()),
             base_url: Some("https://api.openai.com/v1".to_string()),
             api_key: Some("sk-openai".to_string()),
-            submit_base_url: None,
-            wait_base_url: None,
-            asset_base_url: None,
-            default_output_format: None,
             remote_model_id: Some("gpt-image-1".to_string()),
         }
     }
@@ -273,21 +316,40 @@ mod tests {
             .as_str()
             .expect("prompt")
             .contains("turn into a cinematic poster"));
+        assert_eq!(body["size"], "1536x1024");
         assert_eq!(body["n"], 1);
     }
 
     #[test]
-    fn collect_edit_images_maps_data_url_reference_images() {
+    fn resolve_openai_image_size_maps_supported_aspect_ratios() {
+        let mut square = request();
+        square.aspect_ratio = "1:1".to_string();
+        assert_eq!(resolve_openai_image_size(&square), "1024x1024");
+
+        let mut portrait = request();
+        portrait.aspect_ratio = "9:16".to_string();
+        assert_eq!(resolve_openai_image_size(&portrait), "1024x1536");
+
+        let mut official = request();
+        official.size = "2048x2048".to_string();
+        assert_eq!(resolve_openai_image_size(&official), "2048x2048");
+    }
+
+    #[test]
+    fn collect_edit_images_maps_multiple_data_url_reference_images() {
         let mut request = request();
         request.reference_images = Some(vec![
             "data:image/png;base64,YWJj".to_string(),
+            "data:image/jpeg;base64,ZGVm".to_string(),
         ]);
 
         let references = collect_edit_images(&request).expect("references");
 
-        assert_eq!(references.len(), 1);
+        assert_eq!(references.len(), 2);
         assert_eq!(references[0].mime_type, "image/png");
         assert_eq!(references[0].bytes, b"abc");
+        assert_eq!(references[1].mime_type, "image/jpeg");
+        assert_eq!(references[1].bytes, b"def");
     }
 
     #[test]
@@ -295,6 +357,44 @@ mod tests {
         let error = collect_edit_images(&request()).expect_err("missing refs should fail");
 
         assert!(error.to_string().contains("reference images"));
+    }
+
+    #[test]
+    fn collect_edit_images_rejects_unsupported_mime_type() {
+        let mut request = request();
+        request.reference_images = Some(vec!["data:image/gif;base64,YWJj".to_string()]);
+
+        let error = collect_edit_images(&request).expect_err("gif should fail");
+
+        assert!(error.to_string().contains("MIME type"));
+    }
+
+    #[test]
+    fn collect_edit_images_rejects_more_than_openai_limit() {
+        let mut request = request();
+        request.reference_images = Some(
+            (0..17)
+                .map(|_| "data:image/png;base64,YWJj".to_string())
+                .collect(),
+        );
+
+        let error = collect_edit_images(&request).expect_err("too many refs should fail");
+
+        assert!(error.to_string().contains("at most 16"));
+    }
+
+    #[test]
+    fn build_edit_form_accepts_multiple_reference_images() {
+        let mut request = request();
+        request.reference_images = Some(vec![
+            "data:image/png;base64,YWJj".to_string(),
+            "data:image/webp;base64,ZGVm".to_string(),
+        ]);
+
+        let form = build_edit_form(&request, &runtime()).expect("form");
+
+        assert_eq!(super::OPENAI_EDIT_IMAGE_FORM_FIELD, "image[]");
+        drop(form);
     }
 
     #[test]

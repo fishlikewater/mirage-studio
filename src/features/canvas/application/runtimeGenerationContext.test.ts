@@ -23,27 +23,24 @@ const customProviders: CustomProviderConfig[] = [
   },
 ];
 
-const xaisProviders: CustomProviderConfig[] = [
+const openAiImageProviders: CustomProviderConfig[] = [
   {
-    id: 'gateway-xais',
-    name: 'Xais Gateway',
-    protocol: 'xais-task',
-    baseUrl: '',
-    apiKey: '',
+    id: 'openai-images',
+    name: 'OpenAI Images',
+    protocol: 'openai-image',
+    baseUrl: 'https://api.openai.com/v1',
+    apiKey: 'sk-openai',
     connection: {
-      xaisTask: {
-        submitBaseUrl: 'https://sg2c.dchai.cn',
-        waitBaseUrl: 'https://sg2.dchai.cn',
-        assetBaseUrl: 'https://svt1.dchai.cn',
-        apiKey: 'token-xais',
-        defaultOutputFormat: 'image/png',
+      openapi: {
+        baseUrl: 'https://api.openai.com/v1',
+        apiKey: 'sk-openai',
       },
     },
     models: [
       {
-        id: 'model-main',
-        displayName: 'Nano Banana Xais',
-        remoteModelId: 'Nano_Banana_Pro_2K_0',
+        id: 'gpt-image',
+        displayName: 'GPT Image',
+        remoteModelId: 'gpt-image-1',
         enabled: true,
       },
     ],
@@ -77,19 +74,17 @@ describe('runtimeGenerationContext', () => {
     expect(context.providerRuntime?.remoteModelId).toBe('Nano_Banana_Pro_2K_0');
   });
 
-  it('returns xais-task runtime from supplier configuration', () => {
-    const model = getRuntimeImageModel('custom-provider:gateway-xais:model-main', xaisProviders);
+  it('returns openai-image runtime from supplier configuration', () => {
+    const model = getRuntimeImageModel('custom-provider:openai-images:gpt-image', openAiImageProviders);
     const context = resolveGenerationContext(model);
 
     expect(context.isConfigured).toBe(true);
     expect(context.providerRuntime).toMatchObject({
       kind: 'custom-provider',
-      protocol: 'xais-task',
-      remoteModelId: 'Nano_Banana_Pro_2K_0',
-      submitBaseUrl: 'https://sg2c.dchai.cn',
-      waitBaseUrl: 'https://sg2.dchai.cn',
-      assetBaseUrl: 'https://svt1.dchai.cn',
-      apiKey: 'token-xais',
+      protocol: 'openai-image',
+      baseUrl: 'https://api.openai.com/v1',
+      apiKey: 'sk-openai',
+      remoteModelId: 'gpt-image-1',
     });
   });
 });

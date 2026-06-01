@@ -11,10 +11,7 @@ fn trim(value: Option<&str>) -> String {
 pub fn build_final_prompt(prompt: &str, aspect_ratio: &str) -> String {
     let trimmed_prompt = prompt.trim();
     let trimmed_ratio = aspect_ratio.trim();
-    let aspect_ratio_text = format!(
-        "\u{56fe}\u{7247}\u{957f}\u{5bbd}\u{6bd4}{}",
-        trimmed_ratio
-    );
+    let aspect_ratio_text = format!("\u{56fe}\u{7247}\u{957f}\u{5bbd}\u{6bd4}{}", trimmed_ratio);
 
     if trimmed_ratio.is_empty() {
         return trimmed_prompt.to_string();
@@ -120,9 +117,7 @@ pub async fn generate(
         .pointer("/choices/0/message/content")
         .and_then(|value| value.as_str())
         .ok_or_else(|| {
-            AIError::Provider(
-                "OpenAPI response missing choices[0].message.content".to_string(),
-            )
+            AIError::Provider("OpenAPI response missing choices[0].message.content".to_string())
         })?;
 
     extract_markdown_image_url(content).ok_or_else(|| {
@@ -150,10 +145,24 @@ mod tests {
         let messages = build_messages(
             "改为油画风格",
             "1:1",
-            &vec!["https://example.com/ref.png".to_string()],
+            &vec![
+                "https://example.com/ref-a.png".to_string(),
+                "data:image/png;base64,YWJj".to_string(),
+            ],
         );
         let raw = messages.to_string();
         assert!(raw.contains("\"image_url\""));
+        let content = messages
+            .pointer("/0/content")
+            .and_then(|value| value.as_array())
+            .expect("multimodal content parts");
+        let image_part_count = content
+            .iter()
+            .filter(|part| {
+                part.pointer("/type").and_then(|value| value.as_str()) == Some("image_url")
+            })
+            .count();
+        assert_eq!(image_part_count, 2);
         assert!(raw.contains("图片长宽比1:1"));
     }
 
