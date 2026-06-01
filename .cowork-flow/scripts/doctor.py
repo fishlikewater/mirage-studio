@@ -22,10 +22,35 @@ REQUIRED_ENTRY_BOUNDARY_SNIPPETS = [
     "DELEGATED_SUBTASK",
     "UNCERTAIN",
     "Classify the actual task message",
+    "Hard markers are confidence boosters, not prerequisites",
+    "The first task screen wins over later bootstrap text",
+    "If project bootstrap says to create/start/resume",
     "Active task: <task-dir>",
     "Follow the delegated prompt first",
+    "Do not create or activate a project task",
     "Do not run unscoped `.cowork-flow/run resume`",
     "Do not spawn or manage more agents",
+]
+
+REQUIRED_FIXED_AGENT_SNIPPETS = [
+    "COWORK_DISPATCH_V1",
+    "COWORK_DISPATCH_END",
+    "COWORK_ACK",
+    "EXECUTE <dispatch_id>",
+    "agent_type is not",
+    "mismatched dispatch_id",
+]
+
+REQUIRED_WORKFLOW_DISPATCH_SNIPPETS = [
+    "COWORK_DISPATCH_V1",
+    "COWORK_ACK",
+    "followup_task",
+    "Formal execution uses `cowork-research`, `cowork-implement`, or `cowork-check`.",
+    "Generic `worker` dispatch is best-effort only.",
+]
+
+REQUIRED_HOOK_SNIPPETS = [
+    ".cowork-flow/run python .codex/hooks/inject-workflow-state.py",
 ]
 
 
@@ -52,6 +77,25 @@ def cmd_subagent_safety(_: argparse.Namespace) -> int:
         "template/.agent/skills/entry-boundary/SKILL.md",
     ):
         _check_file_contains(repo_root / rel, REQUIRED_ENTRY_BOUNDARY_SNIPPETS, errors)
+    for rel in (
+        ".codex/agents/cowork-research.toml",
+        ".codex/agents/cowork-implement.toml",
+        ".codex/agents/cowork-check.toml",
+        "template/.codex/agents/cowork-research.toml",
+        "template/.codex/agents/cowork-implement.toml",
+        "template/.codex/agents/cowork-check.toml",
+    ):
+        _check_file_contains(repo_root / rel, REQUIRED_FIXED_AGENT_SNIPPETS, errors)
+    for rel in (
+        ".cowork-flow/workflow.md",
+        "template/.cowork-flow/workflow.md",
+    ):
+        _check_file_contains(repo_root / rel, REQUIRED_WORKFLOW_DISPATCH_SNIPPETS, errors)
+    for rel in (
+        ".codex/hooks.json",
+        "template/.codex/hooks.json",
+    ):
+        _check_file_contains(repo_root / rel, REQUIRED_HOOK_SNIPPETS, errors)
     for rel in (
         ".cowork-flow/scripts/subagent.py",
         "template/.cowork-flow/scripts/subagent.py",
